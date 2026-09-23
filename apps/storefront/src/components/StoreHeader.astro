@@ -1,0 +1,63 @@
+---
+import type { Locale } from '../i18n';
+import { catalogText } from '../lib/catalog';
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const suffix = Astro.url.pathname.replace(/^\/(ru|ro)/, '');
+---
+
+<a class="skip-link" href="#main">
+  {locale === 'ru' ? 'Перейти к содержимому' : 'Salt la conținut'}
+</a>
+<header class="container">
+  <a class="brand" href={`/${locale}/`}>
+    bee<span aria-hidden="true">·</span>
+  </a>
+  <nav aria-label={locale === 'ru' ? 'Навигация' : 'Navigare'}>
+    <a href={`/${locale}/catalog/`}>{catalogText[locale].catalog}</a>
+    <a
+      href={`/ru${suffix}`}
+      lang="ru"
+      aria-current={locale === 'ru' ? 'page' : undefined}
+    >
+      RU
+    </a>
+    <a
+      href={`/ro${suffix}`}
+      lang="ro"
+      aria-current={locale === 'ro' ? 'page' : undefined}
+    >
+      RO
+    </a>
+  </nav>
+</header>
+<style>
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding-block: var(--space-lg);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .brand {
+    font-size: 2.75rem;
+    font-weight: 800;
+    text-decoration: none;
+    letter-spacing: -0.08em;
+  }
+  .brand span {
+    color: var(--color-accent);
+  }
+  nav {
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    font-size: var(--text-sm);
+  }
+  nav a[aria-current] {
+    text-decoration-color: var(--color-accent);
+  }
+</style>

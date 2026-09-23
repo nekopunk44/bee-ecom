@@ -1,0 +1,168 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { isLocale, messages } from '../../i18n';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const t = messages[locale];
+---
+
+<Layout locale={locale} title={t.title} description={t.description}>
+  <a class="skip-link" href="#main">
+    {t.skip}
+  </a>
+  <header class="container masthead">
+    <a class="brand" href={`/${locale}/`} aria-label="Bee">
+      bee<span aria-hidden="true">·</span>
+    </a>
+    <nav aria-label={t.locale}>
+      <a href={`/${locale}/catalog/`}>
+        {locale === 'ru' ? 'Каталог' : 'Catalog'}
+      </a>
+      <a
+        href="/ru/"
+        lang="ru"
+        aria-current={locale === 'ru' ? 'page' : undefined}
+      >
+        RU
+      </a>
+      <span aria-hidden="true">/</span>
+      <a
+        href="/ro/"
+        lang="ro"
+        aria-current={locale === 'ro' ? 'page' : undefined}
+      >
+        RO
+      </a>
+    </nav>
+  </header>
+  <main id="main" class="container">
+    <section class="hero" aria-labelledby="hero-heading">
+      <p class="eyebrow">{t.label}</p>
+      <h1 id="hero-heading">{t.heading}</h1>
+      <p class="intro">{t.intro}</p>
+      <p class="notice">{t.notice}</p>
+    </section>
+    <section class="categories" aria-labelledby="categories-heading">
+      <h2 id="categories-heading">{t.section}</h2>
+      <div class="grid">
+        {t.cards.map((card) => (
+          <article>
+            <span class="eyebrow">{card.number}</span>
+            <h3>{card.title}</h3>
+            <p>{card.text}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  </main>
+  <footer class="container">
+    <span>Bee · Moldova</span>
+    <span>{t.footer}</span>
+  </footer>
+</Layout>
+<style>
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: var(--space-lg);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .brand {
+    font-size: 2.75rem;
+    font-weight: 800;
+    letter-spacing: -0.08em;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .brand span {
+    font-size: var(--text-sm);
+    vertical-align: top;
+    margin-left: var(--space-xs);
+    color: var(--color-accent);
+  }
+  nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  nav a {
+    padding: var(--space-sm);
+    text-decoration: none;
+  }
+  nav a[aria-current] {
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+  }
+  .hero {
+    padding-block: var(--space-xl);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-title);
+    font-weight: 400;
+    line-height: 1.06;
+    letter-spacing: -0.045em;
+    max-width: 17ch;
+    margin-block: var(--space-lg);
+    text-wrap: balance;
+  }
+  .intro {
+    max-width: 42rem;
+    font-size: 1.2rem;
+    color: var(--color-muted);
+  }
+  .notice {
+    display: inline-block;
+    max-width: 42rem;
+    margin-top: var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
+    border-left: 2px solid var(--color-accent);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+  }
+  .categories {
+    padding-block: var(--space-lg) var(--space-xl);
+  }
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 500;
+    margin-bottom: var(--space-lg);
+  }
+  .grid {
+    display: grid;
+    gap: var(--space-md);
+  }
+  article {
+    border-top: 1px solid var(--color-line);
+    padding-block: var(--space-lg);
+  }
+  article h3 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-block: var(--space-sm);
+  }
+  article p {
+    color: var(--color-muted);
+    max-width: 30ch;
+  }
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: space-between;
+    border-top: 1px solid var(--color-line);
+    padding-block: var(--space-lg);
+    font-size: var(--text-sm);
+    color: var(--color-muted);
+  }
+  @media (min-width: 48rem) {
+    .hero {
+      padding-block: var(--space-2xl) var(--space-xl);
+    }
+    .grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-xl);
+    }
+  }
+</style>

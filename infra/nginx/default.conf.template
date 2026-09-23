@@ -1,0 +1,50 @@
+log_format bee_json escape=json '{"timestamp":"$time_iso8601","service":"bee-edge","requestId":"$upstream_http_x_request_id","method":"$request_method","status":$status,"durationSeconds":$request_time}';
+access_log /var/log/nginx/access.log bee_json;
+server_tokens off;
+client_max_body_size 8m;
+client_body_timeout 10s;
+client_header_timeout 10s;
+send_timeout 15s;
+gzip on;
+gzip_min_length 1024;
+gzip_types text/css application/javascript application/json image/svg+xml;
+
+# Docker DNS is re-resolved so a recreated API container does not require an
+# Nginx restart. Nginx >= 1.27.3 supports resolve in open-source upstreams.
+resolver 127.0.0.11 valid=10s ipv6=off;
+upstream bee_api { zone api 64k; server api:8080 resolve; }
+upstream bee_storefront { zone storefront 64k; server storefront:4321 resolve; }
+upstream bee_admin { zone admin 64k; server admin:8080 resolve; }
+
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+server {
+    listen 80;
+    server_name ${STOREFRONT_HOST};
+    include /etc/nginx/bee/security.conf;
+    location = /edge-health { access_log off; return 200 'ok'; }
+    location /api/ {
+        include /etc/nginx/bee/proxy.conf;
+        proxy_pass http://bee_api;
+    }
+    location / {
+        include /etc/nginx/bee/proxy.conf;
+        proxy_pass http://bee_storefront;
+    }
+}
+server {
+    listen 80;
+    server_name ${ADMIN_HOST};
+    include /etc/nginx/bee/security.conf;
+    location /api/ {
+        include /etc/nginx/bee/proxy.conf;
+        proxy_pass http://bee_api;
+    }
+    location / {
+        include /etc/nginx/bee/proxy.conf;
+        proxy_pass http://bee_admin;
+    }
+}

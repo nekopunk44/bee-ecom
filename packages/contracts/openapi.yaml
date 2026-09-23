@@ -1,0 +1,175 @@
+openapi: 3.0.3
+info:
+  title: Bee Platform API
+  version: 0.2.0
+  description: Foundation and catalog API. Administrative writes require a server session and exact Origin.
+  license:
+    name: Proprietary
+    url: https://example.invalid/license
+servers:
+  - url: /
+security: []
+tags:
+  - name: Catalog
+    description: Published catalog and metadata.
+  - name: Administration
+    description: Server-authorized catalog operations.
+  - name: Authentication
+    description: Short-lived administrative sessions.
+  - name: Health
+    description: Process liveness and dependency readiness.
+paths:
+  /api/v1/products:
+    $ref: './catalog.json#/endpoints/products'
+  /api/v1/products/{slug}:
+    $ref: './catalog.json#/endpoints/product'
+  /api/v1/catalog/metadata:
+    $ref: './catalog.json#/endpoints/metadata'
+  /api/v1/admin/products:
+    $ref: './catalog.json#/endpoints/adminProducts'
+  /api/v1/admin/products/{id}:
+    $ref: './catalog.json#/endpoints/adminProduct'
+  /api/v1/admin/categories:
+    $ref: './catalog.json#/endpoints/categories'
+  /api/v1/admin/brands:
+    $ref: './catalog.json#/endpoints/brands'
+  /api/v1/admin/attributes:
+    $ref: './catalog.json#/endpoints/attributes'
+  /api/v1/auth/login:
+    $ref: './catalog.json#/endpoints/login'
+  /api/v1/auth/session:
+    $ref: './catalog.json#/endpoints/session'
+  /api/v1/auth/logout:
+    $ref: './catalog.json#/endpoints/logout'
+  /api/v1/admin/media:
+    $ref: './catalog.json#/endpoints/upload'
+  /api/v1/media/{id}/{filename}:
+    $ref: './catalog.json#/endpoints/image'
+  /api/v1/health/live:
+    get:
+      operationId: getLiveness
+      summary: Check that the API process is alive
+      tags: [Health]
+      responses:
+        '200':
+          description: Process is running.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Liveness'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/health/ready:
+    get:
+      operationId: getReadiness
+      summary: Check PostgreSQL schema and Redis connectivity
+      tags: [Health]
+      responses:
+        '200':
+          description: Required dependencies are ready.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+        '503':
+          description: A dependency is unavailable or migrations have not been applied.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/ApiError'
+components:
+  securitySchemes:
+    AdminSession:
+      type: apiKey
+      in: cookie
+      name: bee_session
+      description: HttpOnly cookie. Mutations additionally require the configured admin Origin.
+  headers:
+    RequestId:
+      description: Server-generated correlation ID, also present in access logs.
+      schema:
+        type: string
+        format: uuid
+  responses:
+    ApiError:
+      description: Request failed. No internal diagnostics are returned.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Product:
+      $ref: './catalog.json#/schemas/Product'
+    ProductDraft:
+      $ref: './catalog.json#/schemas/ProductDraft'
+    Metadata:
+      $ref: './catalog.json#/schemas/Metadata'
+    ProductPage:
+      $ref: './catalog.json#/schemas/ProductPage'
+    Session:
+      $ref: './catalog.json#/schemas/Session'
+    Image:
+      $ref: './catalog.json#/schemas/Image'
+    Liveness:
+      type: object
+      additionalProperties: false
+      required: [status, service, version]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+          enum: [bee-api]
+        version:
+          type: string
+    Readiness:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        checks:
+          type: object
+          additionalProperties: false
+          required: [postgres, redis]
+          properties:
+            postgres:
+              type: string
+              enum: [up]
+            redis:
+              type: string
+              enum: [up]
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+              format: uuid

@@ -1,0 +1,23 @@
+{
+  "name": "@bee/storefront",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1",
+    "build": "astro build",
+    "check": "astro check",
+    "start": "node dist/server/entry.mjs"
+  },
+  "dependencies": {
+    "@bee/api-client": "0.1.0",
+    "@astrojs/node": "11.1.6",
+    "@astrojs/svelte": "9.0.1",
+    "@bee/ui": "0.1.0",
+    "astro": "7.3.4",
+    "svelte": "5.57.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10"
+  }
+}

@@ -1,0 +1,74 @@
+name: Bee CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run generate:api
+      - run: git diff --exit-code -- packages/api-client/src/schema.d.ts
+      - run: npm run check
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+      - run: node infra/scripts/setup.mjs
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - run: docker compose up -d --wait --wait-timeout 180
+      - run: node infra/scripts/smoke.mjs
+      - name: Catalog authentication and publishing
+        run: node infra/scripts/check-catalog.mjs
+      - name: Migrations are idempotent
+        run: docker compose run --rm migrate
+      - name: Worker preserves unknown events
+        run: node infra/scripts/check-outbox.mjs
+      - name: Redis outage and recovery
+        run: |
+          docker compose stop redis
+          node infra/scripts/check-outage.mjs
+          docker compose start redis
+          docker compose up -d --wait --wait-timeout 120
+          node infra/scripts/smoke.mjs
+      - name: PostgreSQL outage and recovery
+        run: |
+          docker compose stop postgres
+          node infra/scripts/check-outage.mjs
+          docker compose start postgres
+          docker compose up -d --wait --wait-timeout 120
+          node infra/scripts/smoke.mjs
+      - name: Inspect application logs
+        if: always()
+        run: docker compose logs --no-color api worker migrate nginx
+      - name: Stop containers
+        if: always()
+        run: docker compose down

@@ -1,0 +1,225 @@
+name: bee
+
+x-backend-environment: &backend-environment
+  APP_ENV: ${APP_ENV:-development}
+  API_PORT: '8080'
+  API_THREADS: '2'
+  PGHOST: postgres
+  PGPORT: '5432'
+  PGDATABASE: ${POSTGRES_DB:-bee}
+  PGUSER: ${POSTGRES_USER:-bee}
+  PGPASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup first}
+  PGSSLMODE: disable
+  REDIS_HOST: redis
+  REDIS_PORT: '6379'
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?Run npm run setup first}
+  ADMIN_ORIGIN: ${ADMIN_ORIGIN:-http://admin.localhost:8080}
+  S3_ENDPOINT: http://minio:9000
+  S3_BUCKET: ${S3_BUCKET:-bee-media}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-bee-media-app}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?Run npm run setup to add the media credential}
+  S3_REGION: ${S3_REGION:-us-east-1}
+
+services:
+  postgres:
+    image: postgres:17.9-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bee}
+      POSTGRES_USER: ${POSTGRES_USER:-bee}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup first}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test:
+        [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.8-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run npm run setup first}
+    command:
+      [
+        sh,
+        -c,
+        'exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --appendonly no --maxmemory 128mb --maxmemory-policy allkeys-lru',
+      ]
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-bee-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run npm run setup first}
+    volumes: [minio_data:/data]
+    ports: ['127.0.0.1:9001:9001']
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:9000/minio/health/live]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-bee-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run npm run setup first}
+      S3_BUCKET: ${S3_BUCKET:-bee-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-bee-media-app}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Run npm run setup}
+    entrypoint: [sh, -ec]
+    command:
+      - |
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+        mc version enable "local/$$S3_BUCKET"
+        printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject"],"Resource":["arn:aws:s3:::%s/products/*"]}]}' "$$S3_BUCKET" > /tmp/bee-media-policy.json
+        mc admin user add local "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" >/dev/null
+        mc admin policy create local bee-media /tmp/bee-media-policy.json
+        mc admin policy attach local bee-media --user "$$S3_ACCESS_KEY"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+      target: migrate
+    environment: *backend-environment
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+
+  api:
+    build: { context: ., dockerfile: infra/docker/backend.Dockerfile }
+    image: bee-backend:local
+    environment: *backend-environment
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          CMD,
+          curl,
+          --fail,
+          --silent,
+          --max-time,
+          '6',
+          http://localhost:8080/api/v1/health/ready,
+        ]
+      interval: 10s
+      timeout: 7s
+      start_period: 20s
+      retries: 6
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: infra/docker/backend.Dockerfile }
+    image: bee-backend:local
+    command: [bee-worker]
+    environment: *backend-environment
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'test -n "$$(find /tmp/bee-worker-heartbeat -mmin -1 2>/dev/null)"',
+        ]
+      interval: 15s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 15s
+    restart: unless-stopped
+
+  storefront:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+      target: storefront
+      args:
+        SITE_URL: ${SITE_URL:-http://localhost:8080}
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:4321/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend.Dockerfile
+      target: admin
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/health/live]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.28-alpine
+    environment:
+      STOREFRONT_HOST: ${STOREFRONT_HOST:-localhost}
+      ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
+      NGINX_ENVSUBST_FILTER: '^(STOREFRONT_HOST|ADMIN_HOST)$$'
+    ports: ['127.0.0.1:${HTTP_PORT:-8080}:80']
+    volumes:
+      - ./infra/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./infra/nginx/security.conf:/etc/nginx/bee/security.conf:ro
+      - ./infra/nginx/proxy.conf:/etc/nginx/bee/proxy.conf:ro
+    depends_on:
+      api: { condition: service_healthy }
+      storefront: { condition: service_healthy }
+      admin: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'wget -q -O /dev/null --header="Host: $$STOREFRONT_HOST" http://127.0.0.1/edge-health',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:

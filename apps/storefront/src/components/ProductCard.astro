@@ -1,0 +1,72 @@
+---
+import { money, catalogText, type Product } from '../lib/catalog';
+import type { Locale } from '../i18n';
+interface Props {
+  product: Product;
+  locale: Locale;
+}
+const { product, locale } = Astro.props;
+const translation = product.translations[locale];
+const image = product.images[0];
+const price = Math.min(
+  ...product.variants.filter((v) => v.active).map((v) => v.priceMinor),
+);
+---
+
+<article>
+  <a href={`/${locale}/catalog/${product.slug}/`} aria-label={translation.name}>
+    <div class="picture">
+      {image ? (
+        <img
+          src={image.url}
+          srcset={image.srcSet}
+          sizes="(min-width: 75rem) 360px, (min-width: 48rem) 40vw, 90vw"
+          alt={translation.name}
+          width="640"
+          height="640"
+          loading="lazy"
+        />
+      ) : (
+        <span>{catalogText[locale].noImage}</span>
+      )}
+    </div>
+    <h2>{translation.name}</h2>
+  </a>
+  <p class="price">
+    {catalogText[locale].from} {money(price, locale)}
+  </p>
+</article>
+<style>
+  article a {
+    text-decoration: none;
+  }
+  .picture {
+    aspect-ratio: 1;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--color-muted);
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform var(--motion-normal) var(--ease-standard);
+  }
+  a:hover img {
+    transform: scale(1.025);
+  }
+  h2 {
+    font-size: 1.2rem;
+    line-height: 1.4;
+    font-weight: 500;
+    margin-block: var(--space-md) var(--space-xs);
+  }
+  .price {
+    margin: 0;
+    font-weight: 600;
+  }
+</style>

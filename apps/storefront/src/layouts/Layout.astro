@@ -1,0 +1,46 @@
+---
+import '@bee/ui/tokens.css';
+import '@bee/ui/base.css';
+import { locales, type Locale } from '../i18n';
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  noindex?: boolean;
+}
+const { locale, title, description, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const suffix = Astro.url.pathname.replace(/^\/(ru|ro)/, '');
+const allowIndex = process.env.ENABLE_INDEXING === 'true' && !noindex;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta
+      name="robots"
+      content={allowIndex ? 'index, follow' : 'noindex, follow'}
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={canonical} />
+    {locales.map((language) => (
+      <link
+        rel="alternate"
+        hreflang={language}
+        href={new URL(`/${language}${suffix}`, Astro.site)}
+      />
+    ))}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,243 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import StoreHeader from '../../../components/StoreHeader.astro';
+import { isLocale } from '../../../i18n';
+import {
+  catalogApi,
+  catalogText,
+  money,
+  type Product,
+  type Metadata,
+} from '../../../lib/catalog';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const t = catalogText[locale];
+let product: Product | undefined;
+let metadata: Metadata | undefined;
+let missing = false;
+try {
+  const api = catalogApi();
+  const [response, references] = await Promise.all([
+    api.GET('/api/v1/products/{slug}', {
+      params: { path: { slug: Astro.params.slug ?? '' } },
+      signal: AbortSignal.timeout(5000),
+    }),
+    api.GET('/api/v1/catalog/metadata', {
+      params: { query: { locale } },
+      signal: AbortSignal.timeout(5000),
+    }),
+  ]);
+  product = response.data;
+  metadata = references.data;
+  missing = response.response.status === 404;
+  if (!product) Astro.response.status = missing ? 404 : 503;
+} catch {
+  Astro.response.status = 503;
+}
+const translation = product?.translations[locale];
+const hero = product?.images[0];
+const title =
+  translation?.seoTitle ||
+  translation?.name ||
+  (missing ? t.missing : t.unavailable);
+const structured = product
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: translation?.name,
+      description: translation?.description,
+      sku: product.variants[0]?.sku,
+      image: product.images.map((i) => new URL(i.url, Astro.site).href),
+      offers: product.variants.map((v) => ({
+        '@type': 'Offer',
+        price: (v.priceMinor / 100).toFixed(2),
+        priceCurrency: 'MDL',
+        url: new URL(Astro.url.pathname, Astro.site).href,
+      })),
+      brand: metadata?.brands.find((b) => b.id === product?.brandId)?.name,
+    }
+  : null;
+---
+
+<Layout
+  locale={locale}
+  title={`${title} — Bee`}
+  description={
+    translation?.seoDescription ||
+    translation?.description.slice(0, 160) ||
+    title
+  }
+  noindex={!product}
+>
+  <StoreHeader locale={locale} />
+  <main id="main" class="container">
+    <nav aria-label={t.catalog}>
+      <a href={`/${locale}/catalog/`}>{t.catalog}</a> /{' '}
+      {translation?.name ?? title}
+    </nav>
+    {product && translation ? (
+      <>
+        <div class="product">
+          <div>
+            <div class="hero">
+              {hero ? (
+                <img
+                  src={hero.url}
+                  srcset={hero.srcSet}
+                  sizes="(min-width:48rem) 50vw, 90vw"
+                  alt={translation.name}
+                  width="640"
+                  height="640"
+                  fetchpriority="high"
+                />
+              ) : (
+                <span>{t.noImage}</span>
+              )}
+            </div>
+            {product.images.length > 1 && (
+              <div class="gallery">
+                {product.images.slice(1).map((image) => (
+                  <img
+                    src={image.url}
+                    srcset={image.srcSet}
+                    sizes="160px"
+                    alt={translation.name}
+                    width="160"
+                    height="160"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <p class="eyebrow">
+              {metadata?.brands.find((b) => b.id === product?.brandId)?.name ??
+                'Bee / Moldova'}
+            </p>
+            <h1>{translation.name}</h1>
+            <p class="price">
+              {t.from}{' '}
+              {money(
+                Math.min(...product.variants.map((v) => v.priceMinor)),
+                locale,
+              )}
+            </p>
+            <p class="notice">{t.orderNotice}</p>
+            <h2>{t.description}</h2>
+            <p class="description">{translation.description}</p>
+          </div>
+        </div>
+        <section>
+          <h2>{t.variants}</h2>
+          {product.variants.map((variant) => (
+            <article>
+              <h3>{variant.name}</h3>
+              <p>
+                {t.sku}: {variant.sku} · {money(variant.priceMinor, locale)}
+              </p>
+              <dl>
+                {Object.entries(variant.attributes).map(([code, value]) => (
+                  <div>
+                    <dt>
+                      {metadata?.attributes.find((a) => a.code === code)
+                        ?.name ?? code}
+                    </dt>
+                    <dd>
+                      {value}{' '}
+                      {metadata?.attributes.find((a) => a.code === code)?.unit}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          ))}
+        </section>
+        <script
+          type="application/ld+json"
+          set:html={JSON.stringify(structured).replace(/</g, '\u003c')}
+        ></script>
+      </>
+    ) : (
+      <section>
+        <h1>{title}</h1>
+        <a href={`/${locale}/catalog/`}>{t.back}</a>
+      </section>
+    )}
+  </main>
+</Layout>
+<style>
+  main {
+    padding-block: var(--space-lg) var(--space-xl);
+  }
+  nav {
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-lg);
+  }
+  .product {
+    display: grid;
+    gap: var(--space-xl);
+  }
+  .hero {
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+  .hero img {
+    width: 100%;
+    height: 100%;
+  }
+  .gallery {
+    display: flex;
+    gap: var(--space-sm);
+    overflow: auto;
+    margin-top: var(--space-md);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 400;
+    line-height: 1.15;
+  }
+  .price {
+    font-size: 1.8rem;
+    font-weight: 600;
+  }
+  .notice {
+    padding: var(--space-md);
+    border-left: 2px solid var(--color-accent);
+    background: var(--color-surface);
+  }
+  .description {
+    white-space: pre-line;
+  }
+  section {
+    margin-top: var(--space-xl);
+  }
+  article {
+    padding-block: var(--space-md);
+    border-top: 1px solid var(--color-line);
+  }
+  dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-md);
+    max-width: 40rem;
+  }
+  dd {
+    margin: 0;
+  }
+  @media (min-width: 48rem) {
+    .product {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>

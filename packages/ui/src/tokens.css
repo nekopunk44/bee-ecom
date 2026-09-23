@@ -1,0 +1,35 @@
+:root {
+  color-scheme: light;
+  --color-paper: #f6f4ee;
+  --color-surface: #fffef9;
+  --color-ink: #272e28;
+  --color-muted: #60685e;
+  --color-line: #d7dace;
+  --color-accent: #b86b21;
+  --color-forest: #324a3b;
+  --color-danger: #a32a2a;
+  --font-body: 'Segoe UI', system-ui, sans-serif;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --space-xs: 0.375rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.25rem;
+  --space-lg: 2rem;
+  --space-xl: 3.5rem;
+  --space-2xl: 6rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.5rem;
+  --shadow-soft: 0 0.5rem 2rem rgb(39 46 40 / 6%);
+  --text-sm: 0.875rem;
+  --text-body: 1rem;
+  --text-title: clamp(2.6rem, 6vw, 5.5rem);
+  --content-width: 76rem;
+  --motion-fast: 150ms;
+  --motion-normal: 280ms;
+  --motion-slow: 650ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --z-navigation: 20;
+  --z-overlay: 100;
+  /* Breakpoints: compact < 48rem, medium 48–75rem, wide >= 75rem.
+     CSS custom properties cannot be used inside media query conditions. */
+}

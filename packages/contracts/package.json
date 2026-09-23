@@ -1,0 +1,9 @@
+{
+  "name": "@bee/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "openapi.yaml",
+    "catalog.json"
+  ]
+}

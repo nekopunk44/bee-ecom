@@ -1,0 +1,1045 @@
+{
+  "schemas": {
+    "Translation": {
+      "type": "object",
+      "required": ["name", "description", "seoTitle", "seoDescription"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "seoTitle": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "seoDescription": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "Image": {
+      "type": "object",
+      "required": ["id", "url", "srcSet"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "url": {
+          "type": "string"
+        },
+        "srcSet": {
+          "type": "string"
+        }
+      }
+    },
+    "VariantInput": {
+      "type": "object",
+      "required": ["sku", "name", "priceMinor", "active", "attributes"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "priceMinor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "ProductDraft": {
+      "type": "object",
+      "required": [
+        "slug",
+        "status",
+        "brandId",
+        "categoryIds",
+        "translations",
+        "variants",
+        "mediaIds"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "active", "archived"]
+        },
+        "brandId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "categoryIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "translations": {
+          "type": "object",
+          "required": ["ru", "ro"],
+          "properties": {
+            "ru": {
+              "$ref": "#/schemas/Translation"
+            },
+            "ro": {
+              "$ref": "#/schemas/Translation"
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/VariantInput"
+          }
+        },
+        "mediaIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "Product": {
+      "type": "object",
+      "required": [
+        "id",
+        "slug",
+        "status",
+        "revision",
+        "brandId",
+        "categoryIds",
+        "translations",
+        "variants",
+        "images"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "active", "archived"]
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "brandId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "categoryIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "translations": {
+          "type": "object",
+          "required": ["ru", "ro"],
+          "properties": {
+            "ru": {
+              "$ref": "#/schemas/Translation"
+            },
+            "ro": {
+              "$ref": "#/schemas/Translation"
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/schemas/VariantInput"
+              },
+              {
+                "type": "object",
+                "required": ["id", "currency"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": ["MDL"]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/Image"
+          }
+        }
+      }
+    },
+    "ProductPage": {
+      "type": "object",
+      "required": ["items", "total", "page", "limit"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/Product"
+          }
+        },
+        "total": {
+          "type": "integer"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      }
+    },
+    "Reference": {
+      "type": "object",
+      "required": ["id", "slug", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "Metadata": {
+      "type": "object",
+      "required": ["categories", "brands", "attributes"],
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/Reference"
+          }
+        },
+        "brands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/schemas/Reference"
+          }
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "name", "unit"],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "unit": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "Session": {
+      "type": "object",
+      "required": ["email", "permissions"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Login": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "format": "password",
+          "maxLength": 256
+        }
+      }
+    },
+    "ReferenceDraft": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nameRu": {
+          "type": "string"
+        },
+        "nameRo": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "endpoints": {
+    "products": {
+      "get": {
+        "operationId": "listProducts",
+        "summary": "Search published products",
+        "tags": ["Catalog"],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/ProductPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "type": "string",
+              "enum": ["ru", "ro"],
+              "default": "ru"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brand",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": ["newest", "price_asc", "price_desc", "name"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 48
+            }
+          },
+          {
+            "in": "query",
+            "name": "minPrice",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000000
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxPrice",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000000
+            }
+          }
+        ]
+      }
+    },
+    "product": {
+      "get": {
+        "operationId": "getProduct",
+        "summary": "Read a published product",
+        "tags": ["Catalog"],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "metadata": {
+      "get": {
+        "operationId": "getCatalogMetadata",
+        "summary": "Read categories, brands and attributes",
+        "tags": ["Catalog"],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Metadata"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "type": "string",
+              "enum": ["ru", "ro"],
+              "default": "ru"
+            }
+          }
+        ]
+      }
+    },
+    "adminProducts": {
+      "get": {
+        "operationId": "listAdminProducts",
+        "summary": "Search all product statuses",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/ProductPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "type": "string",
+              "enum": ["ru", "ro"],
+              "default": "ru"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brand",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": ["newest", "price_asc", "price_desc", "name"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 48
+            }
+          },
+          {
+            "in": "query",
+            "name": "minPrice",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000000
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxPrice",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000000
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createProduct",
+        "summary": "Create a translated product",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/schemas/ProductDraft"
+              }
+            }
+          }
+        }
+      }
+    },
+    "adminProduct": {
+      "get": {
+        "operationId": "getAdminProduct",
+        "summary": "Read a product for editing",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateProduct",
+        "summary": "Replace editable fields with optimistic revision check",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/schemas/ProductDraft"
+                  },
+                  {
+                    "type": "object",
+                    "required": ["revision"],
+                    "properties": {
+                      "revision": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Sign in for a 30-minute session",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["email"],
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/schemas/Login"
+              }
+            }
+          }
+        }
+      }
+    },
+    "session": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Read current identity and permissions",
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        }
+      }
+    },
+    "logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Revoke current session",
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session cleared"
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        }
+      }
+    },
+    "upload": {
+      "post": {
+        "operationId": "uploadImage",
+        "summary": "Validate and store resized images",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/schemas/Image"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "image": {
+      "get": {
+        "operationId": "getProductImage",
+        "summary": "Read a published image or authenticated admin preview",
+        "tags": ["Catalog"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "filename",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["320.webp", "640.webp", "1280.webp"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Optimized image",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        }
+      }
+    },
+    "categories": {
+      "post": {
+        "operationId": "createCategories",
+        "summary": "Create catalog reference",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/schemas/ReferenceDraft"
+              }
+            }
+          }
+        }
+      }
+    },
+    "brands": {
+      "post": {
+        "operationId": "createBrands",
+        "summary": "Create catalog reference",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/schemas/ReferenceDraft"
+              }
+            }
+          }
+        }
+      }
+    },
+    "attributes": {
+      "post": {
+        "operationId": "createAttributes",
+        "summary": "Create catalog reference",
+        "tags": ["Administration"],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "./openapi.yaml#/components/responses/ApiError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/schemas/ReferenceDraft"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

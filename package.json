@@ -1,0 +1,44 @@
+{
+  "name": "bee-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0 <23 || >=24.0.0",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "node infra/scripts/setup.mjs",
+    "dev:storefront": "npm run dev -w @bee/storefront",
+    "dev:admin": "npm run dev -w @bee/admin",
+    "generate:api": "openapi-typescript packages/contracts/openapi.yaml -o packages/api-client/src/schema.d.ts",
+    "lint:api": "redocly lint packages/contracts/openapi.yaml",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint:api && npm run check --workspaces --if-present && tsc -p tsconfig.tests.json",
+    "build": "npm run build --workspaces --if-present",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:stack": "node infra/scripts/smoke.mjs",
+    "db:migrate": "node infra/scripts/migrate.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@playwright/test": "1.63.0",
+    "@redocly/cli": "2.54.2",
+    "@types/node": "22.20.4",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.8",
+    "prettier-plugin-astro": "1.0.1",
+    "prettier-plugin-svelte": "4.1.1",
+    "typescript": "5.9.3",
+    "yaml": "2.9.1"
+  }
+}

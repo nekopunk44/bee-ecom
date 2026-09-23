@@ -1,0 +1,16 @@
+---
+import Layout from '../layouts/Layout.astro';
+Astro.response.status = 404;
+---
+
+<Layout
+  locale="ru"
+  title="Страница не найдена — Bee"
+  description="Страница не найдена."
+>
+  <main class="container">
+    <p class="eyebrow">404</p>
+    <h1>Страница не найдена</h1>
+    <a href="/ru/">На главную / Pagina principală</a>
+  </main>
+</Layout>

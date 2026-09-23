@@ -1,0 +1,238 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import StoreHeader from '../../../components/StoreHeader.astro';
+import ProductCard from '../../../components/ProductCard.astro';
+import { isLocale } from '../../../i18n';
+import { catalogApi, catalogText } from '../../../lib/catalog';
+import type { components } from '@bee/api-client';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const t = catalogText[locale];
+const params = Astro.url.searchParams;
+const sortValues = ['newest', 'price_asc', 'price_desc', 'name'] as const;
+const rawSort = params.get('sort') ?? 'newest';
+const sort = sortValues.find((value) => value === rawSort) ?? 'newest';
+const page = Math.max(1, Math.min(10000, Number(params.get('page')) || 1));
+let data: components['schemas']['ProductPage'] | undefined;
+let metadata: components['schemas']['Metadata'] | undefined;
+let failed = false;
+try {
+  const api = catalogApi();
+  const [products, references] = await Promise.all([
+    api.GET('/api/v1/products', {
+      params: {
+        query: {
+          locale,
+          q: params.get('q') ?? '',
+          category: params.get('category') ?? '',
+          brand: params.get('brand') ?? '',
+          sort,
+          page,
+          limit: 12,
+          ...(params.get('min')
+            ? { minPrice: Math.round(Number(params.get('min')) * 100) }
+            : {}),
+          ...(params.get('max')
+            ? { maxPrice: Math.round(Number(params.get('max')) * 100) }
+            : {}),
+        },
+      },
+      signal: AbortSignal.timeout(5000),
+    }),
+    api.GET('/api/v1/catalog/metadata', {
+      params: { query: { locale } },
+      signal: AbortSignal.timeout(5000),
+    }),
+  ]);
+  data = products.data;
+  metadata = references.data;
+  failed = !data || !metadata;
+  if (failed)
+    Astro.response.status = products.response.status === 400 ? 400 : 503;
+} catch {
+  failed = true;
+  Astro.response.status = 503;
+}
+const pageLink = (value: number) => {
+  const query = new URLSearchParams(params);
+  query.set('page', String(value));
+  return `?${query}`;
+};
+---
+
+<Layout
+  locale={locale}
+  title={`${t.catalog} — Bee`}
+  description={t.title}
+  noindex={params.size > 0}
+>
+  <StoreHeader locale={locale} />
+  <main id="main" class="container">
+    <p class="eyebrow">Bee / {t.catalog}</p>
+    <h1>{t.title}</h1>
+    <form class="filters" method="get" role="search">
+      <label class="search">
+        {t.search}
+        <input
+          name="q"
+          value={params.get('q') ?? ''}
+          maxlength="200"
+          placeholder={t.query}
+        />
+      </label>
+      <label>
+        {t.category}
+        <select name="category">
+          <option value="">{t.all}</option>
+          {metadata?.categories.map((c) => (
+            <option value={c.id} selected={params.get('category') === c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {t.brand}
+        <select name="brand">
+          <option value="">{t.all}</option>
+          {metadata?.brands.map((b) => (
+            <option value={b.id} selected={params.get('brand') === b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {t.min}
+        <input
+          name="min"
+          type="number"
+          min="0"
+          max="1000000"
+          step="0.01"
+          value={params.get('min') ?? ''}
+        />
+      </label>
+      <label>
+        {t.max}
+        <input
+          name="max"
+          type="number"
+          min="0"
+          max="1000000"
+          step="0.01"
+          value={params.get('max') ?? ''}
+        />
+      </label>
+      <label>
+        {t.sort}
+        <select name="sort">
+          {sortValues.map((s) => (
+            <option value={s} selected={s === sort}>
+              {t[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button class="button" type="submit">
+        {t.apply}
+      </button>
+      <a href={`/${locale}/catalog/`}>{t.clear}</a>
+    </form>
+    {failed ? (
+      <div class="state" role="status">
+        {t.unavailable}
+      </div>
+    ) : (
+      <>
+        <p>
+          {t.found}: {data?.total}
+        </p>
+        {data?.items.length ? (
+          <div class="products">
+            {data.items.map((product) => (
+              <ProductCard product={product} locale={locale} />
+            ))}
+          </div>
+        ) : (
+          <div class="state">{t.empty}</div>
+        )}
+        <nav class="pagination" aria-label={t.catalog}>
+          {page > 1 && <a href={pageLink(page - 1)}>{t.previous}</a>}
+          <span>
+            {page} / {Math.max(1, Math.ceil((data?.total ?? 0) / 12))}
+          </span>
+          {page * 12 < (data?.total ?? 0) && (
+            <a href={pageLink(page + 1)}>{t.next}</a>
+          )}
+        </nav>
+      </>
+    )}
+  </main>
+</Layout>
+<style>
+  main {
+    padding-block: var(--space-xl);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2rem, 4vw, 3.8rem);
+    line-height: 1.15;
+    max-width: 22ch;
+  }
+  .filters {
+    display: grid;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    margin-block: var(--space-lg);
+  }
+  label {
+    display: grid;
+    gap: var(--space-xs);
+    font-size: var(--text-sm);
+  }
+  input,
+  select {
+    min-width: 0;
+    width: 100%;
+    padding: var(--space-sm);
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+  }
+  .products {
+    display: grid;
+    gap: var(--space-lg);
+    grid-template-columns: 1fr;
+  }
+  .state {
+    padding: var(--space-xl);
+    border: 1px solid var(--color-line);
+  }
+  .pagination {
+    display: flex;
+    gap: var(--space-lg);
+    justify-content: center;
+    margin-top: var(--space-xl);
+  }
+  @media (min-width: 48rem) {
+    .filters {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      align-items: end;
+    }
+    .search {
+      grid-column: span 2;
+    }
+    .products {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 75rem) {
+    .products {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
