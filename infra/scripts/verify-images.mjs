@@ -10,7 +10,11 @@ const images = new Set(
     .map((service) => service.image)
     .filter((image) => image && !image.startsWith('bee-')),
 );
-for (const file of ['backend.Dockerfile', 'frontend.Dockerfile']) {
+for (const file of [
+  'backend.Dockerfile',
+  'frontend.Dockerfile',
+  'minio-init.Dockerfile',
+]) {
   const source = await readFile(
     new URL(`../docker/${file}`, import.meta.url),
     'utf8',

@@ -73,7 +73,8 @@ services:
     restart: unless-stopped
 
   minio-init:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    build: { context: ., dockerfile: infra/docker/minio-init.Dockerfile }
+    image: bee-minio-init:local
     depends_on:
       minio: { condition: service_healthy }
     environment:
@@ -83,6 +84,10 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-bee-media-app}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?Run npm run setup}
     entrypoint: [sh, -ec]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     command:
       - |
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null
