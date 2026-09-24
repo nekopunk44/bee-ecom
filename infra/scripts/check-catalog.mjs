@@ -10,14 +10,10 @@ const credentials = {
   email: `ci-${suffix}@example.invalid`,
   password: randomUUID(),
 };
-execFileSync(
-  'docker',
-  ['compose', 'exec', '-T', 'api', 'bee-admin-create'],
-  {
-    input: JSON.stringify(credentials) + '\n',
-    stdio: ['pipe', 'pipe', 'pipe'],
-  },
-);
+execFileSync('docker', ['compose', 'exec', '-T', 'api', 'bee-admin-create'], {
+  input: JSON.stringify(credentials) + '\n',
+  stdio: ['pipe', 'pipe', 'pipe'],
+});
 let cookie = '';
 async function request(path, status, method = 'GET', body, extra = {}) {
   const response = await fetch(`${base}/api/v1${path}`, {
@@ -39,6 +35,18 @@ async function request(path, status, method = 'GET', body, extra = {}) {
   );
   return response;
 }
+async function mediaRequest(path, status, extra = {}) {
+  const response = await fetch(`${base}${path}`, {
+    headers: { Host: 'admin.localhost', ...extra },
+    signal: AbortSignal.timeout(20000),
+  });
+  assert.equal(
+    response.status,
+    status,
+    `GET ${path}: ${await response.clone().text()}`,
+  );
+  return response;
+}
 await request('/admin/products', 401);
 await request('/auth/login', 403, 'POST', credentials, {
   Origin: 'https://untrusted.invalid',
@@ -50,6 +58,32 @@ assert.match(setCookie, /SameSite=Strict/i);
 cookie = setCookie.split(';')[0];
 const session = await (await request('/auth/session', 200)).json();
 assert.ok(session.permissions.includes('products.write'));
+const mediaHeaders = {
+  Host: 'admin.localhost',
+  Origin: origin,
+  Cookie: cookie,
+  'Content-Type': 'application/octet-stream',
+};
+const invalidImage = await fetch(`${base}/api/v1/admin/media`, {
+  method: 'POST',
+  headers: mediaHeaders,
+  body: '<svg/>',
+  signal: AbortSignal.timeout(20000),
+});
+assert.equal(invalidImage.status, 415);
+const imageBytes = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=',
+  'base64',
+);
+const upload = await fetch(`${base}/api/v1/admin/media`, {
+  method: 'POST',
+  headers: mediaHeaders,
+  body: imageBytes,
+  signal: AbortSignal.timeout(60000),
+});
+assert.equal(upload.status, 201, await upload.clone().text());
+const media = await upload.json();
+await mediaRequest(media.url, 401, { Cookie: '' });
 const category = await (
   await request('/admin/categories', 201, 'POST', {
     slug: `ci-${suffix}`,
@@ -68,7 +102,7 @@ const draft = {
   status: 'draft',
   brandId: null,
   categoryIds: [category.id],
-  mediaIds: [],
+  mediaIds: [media.id],
   translations: { ru: translation, ro: translation },
   variants: [
     {
@@ -99,6 +133,11 @@ await request(`/admin/products/${created.id}`, 409, 'PUT', {
 });
 const product = await (await request(`/products/${draft.slug}`, 200)).json();
 assert.equal(product.variants[0].priceMinor, 12345);
+const publicImage = await mediaRequest(media.url, 200, { Cookie: '' });
+assert.equal(publicImage.headers.get('content-type'), 'image/webp');
+const webp = Buffer.from(await publicImage.arrayBuffer());
+assert.equal(webp.toString('ascii', 0, 4), 'RIFF');
+assert.equal(webp.toString('ascii', 8, 12), 'WEBP');
 for (const locale of ['ru', 'ro']) {
   const page = await fetch(`${base}/${locale}/catalog/${draft.slug}`);
   assert.equal(page.status, 200);
@@ -110,8 +149,27 @@ await request(`/admin/products/${created.id}`, 200, 'PUT', {
   revision: 2,
 });
 await request(`/products/${draft.slug}`, 404);
+await mediaRequest(media.url, 401, { Cookie: '' });
+execFileSync(
+  'docker',
+  [
+    'compose',
+    'exec',
+    '-T',
+    'postgres',
+    'sh',
+    '-c',
+    'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"',
+  ],
+  {
+    input: `DELETE FROM user_roles WHERE user_id=(SELECT id FROM users WHERE email='${credentials.email}');\n`,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  },
+);
+await request('/admin/products', 403);
+await request('/admin/products', 403, 'POST', draft);
 await request('/auth/logout', 204, 'POST');
 await request('/auth/session', 401);
 console.log(
-  'Catalog integration passed: provisioning, origin, session, draft/publication, revision conflict, SSR and logout.',
+  'Catalog integration passed: provisioning, origin, session, media processing/storage/privacy, publication, revision conflict, SSR, role revocation and logout.',
 );
