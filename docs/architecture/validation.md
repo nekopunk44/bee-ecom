@@ -9,10 +9,23 @@ they do not establish concurrent PostgreSQL behavior. Browser tests use an API
 fixture and cover SSR/search, failures, editor saves, revision conflicts and RBAC UI.
 The admin build is approximately 68.4 kB JS / 25.5 kB gzip.
 
-C++ compilation, CTest and real container/API integration are pending remote CI.
-The user declined installing Linux/Docker locally. See [catalog.md](catalog.md)
-for implemented scope and remaining limitations. The following records describe
-the earlier foundation snapshot, not the current catalog feature set.
+See [catalog.md](catalog.md) for implemented scope and remaining limitations.
+The user declined installing Linux/Docker locally, so container checks run in CI.
+
+## GitHub Actions runtime snapshot — 2026-09-24, commit `ca4ee52`
+
+Frontend CI passed, including format, generated contract, type checks, 9 unit/
+SQL tests, audit, production builds and all 10 browser tests. The container job
+built C++23 and passed both CTests. Compose startup, service readiness, health,
+request correlation, locale routing and admin-host smoke checks passed. The
+catalog integration scenario reached image upload, category creation and draft
+creation, then exposed a test-harness omission: the update request did not send
+the persisted variant ID. A follow-up fixes the harness; a new workflow run must
+pass before catalog integration is verified. Migration
+idempotency, outbox delivery and dependency outage checks did not run after the
+integration step failed.
+
+The following section records the earlier foundation snapshot, not the catalog.
 
 ## Foundation snapshot — 2026-09-22
 
@@ -42,27 +55,21 @@ bundle observations, not Core Web Vitals measurements for a finished catalog.
 
 ## Not executable in this environment
 
-Docker Engine/Desktop, a configured Linux environment and the C++ build toolchain
-are absent. A standalone Compose executable validates configuration but cannot
-start containers. Therefore the following are **pending**, not passed:
+Docker Engine/Desktop and the Linux C++ toolchain are absent on the supplied
+Windows machine. A standalone Compose executable validates configuration but
+cannot start containers. The following checks still need a passing remote run:
 
-- C++23 compilation, linking and CTest configuration tests;
-- complete Compose startup and container runtime health checks;
-- real PostgreSQL migration execution and Redis connectivity;
-- MinIO startup, bucket initialization and Nginx routing/security at runtime;
-- outbox defer/dead-letter behavior against PostgreSQL;
-- dependency outage and recovery checks, live API/admin integration;
+- end-to-end catalog login, publication, media retrieval/privacy and RBAC;
+- migration idempotency and outbox defer/dead-letter behavior;
+- dependency outage and recovery checks against the running API;
 - container vulnerability scanning and production performance profiling.
 
-The GitHub Actions workflow includes the build, runtime, migration, outbox and
-outage checks. It has been authored but not executed remotely in this workspace.
-Run the documented Compose commands on a Docker host before accepting Milestone
-1 as fully verified. No production deployment has been performed.
+No production deployment has been performed.
 
 ## Remaining scope
 
-No catalog/customer/auth/payment/inventory business endpoints are exposed.
-No production RBAC, TOTP, rate limiting, media upload adapter, recommendation
-engine, Prometheus endpoint or deployment pipeline is claimed. ADRs and the
+Customer, payment and inventory business endpoints are not implemented. Admin
+RBAC and login throttling exist; TOTP, customer authentication, broader rate
+limits, recommendations, Prometheus and a deployment pipeline remain future work. ADRs and the
 milestone plan specify where these arrive. MinIO is an isolated development
 dependency; production storage must be a maintained managed S3 service.

@@ -118,6 +118,8 @@ const created = await (
   await request('/admin/products', 201, 'POST', draft)
 ).json();
 assert.equal(created.revision, 1);
+// Updates must send the persisted variant ID; replacing SKU on a new ID is rejected.
+draft.variants[0].id = created.variants[0].id;
 await request(`/products/${draft.slug}`, 404);
 const published = await (
   await request(`/admin/products/${created.id}`, 200, 'PUT', {
