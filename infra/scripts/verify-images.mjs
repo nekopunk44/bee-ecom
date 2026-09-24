@@ -14,6 +14,7 @@ for (const file of [
   'backend.Dockerfile',
   'frontend.Dockerfile',
   'minio-init.Dockerfile',
+  'minio-server.Dockerfile',
 ]) {
   const source = await readFile(
     new URL(`../docker/${file}`, import.meta.url),
