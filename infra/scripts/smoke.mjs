@@ -27,11 +27,15 @@ for (const locale of ['ru', 'ro']) {
   assert.equal(response.status, 200);
   assert.match(await response.text(), new RegExp(`<html lang="${locale}"`));
 }
-const admin = await request('/', { headers: { Host: adminHost } });
+const adminBase = new URL(base);
+adminBase.hostname = adminHost;
+const admin = await fetch(new URL('/', adminBase), {
+  signal: AbortSignal.timeout(10000),
+});
 assert.equal(admin.status, 200);
 assert.match(await admin.text(), /id="app"/);
-const adminApi = await request('/api/v1/health/ready', {
-  headers: { Host: adminHost },
+const adminApi = await fetch(new URL('/api/v1/health/ready', adminBase), {
+  signal: AbortSignal.timeout(10000),
 });
 assert.equal(adminApi.status, 200);
 console.log(

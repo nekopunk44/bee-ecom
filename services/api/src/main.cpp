@@ -48,6 +48,7 @@ int main() {
         bee::health::registerRoutes(std::make_shared<bee::health::Service>(
             std::make_shared<bee::health::Repository>(postgres, redis)));
         drogon::app().addListener("0.0.0.0", config.port)
+            .setUploadPath("/tmp/uploads")
             .setThreadNum(config.threads)
             .setClientMaxBodySize(8 * 1024 * 1024)
             .setClientMaxMemoryBodySize(8 * 1024 * 1024)

@@ -3,7 +3,7 @@
 ## Environments
 
 `.env` is local and ignored. `npm run setup` generates random local credentials
-without overwriting an existing file. Compose uses service DNS names. Public
+without overwriting existing values, appending missing keys. Compose uses service DNS names. Public
 origin (`SITE_URL`) is a storefront build argument; rebuild when it changes.
 The browser talks only to its own origin, including admin `/api/v1`; CORS is not
 enabled. UI dev servers bind loopback. `APP_ENV` accepts development, test,
@@ -21,7 +21,7 @@ must inject secrets through the deployment secret store with restricted access.
 ## Health, logging and failure recovery
 
 - `GET /api/v1/health/live`: process only, always independent of the database.
-- `GET /api/v1/health/ready`: checks migration 0001 and a Redis PING (2s timeout
+- `GET /api/v1/health/ready`: checks migration 0003 and a Redis PING (2s timeout
   per dependency), returns 503 with a sanitized error on failure.
 - `GET /health/live`: storefront/admin process health on their respective hosts.
 - Worker health is a heartbeat refreshed only after a successful database poll.
@@ -82,8 +82,9 @@ volumes; deleting volumes loses local data.
 5. Stage releases before an approved production rollout. Drain old connections
    and keep the previous image release for application rollback. Worker retries
    must remain safe across rolling deployments.
-6. Before commerce launch implement auth/RBAC, CSRF, rate limiting, media
-   validation, payment security and the Milestone 5 acceptance checklist.
+6. Before commerce launch extend the catalog admin auth/RBAC, origin enforcement,
+   login throttling and media validation with customer authentication, TOTP,
+   broader rate limits, payment security and the Milestone 5 acceptance checklist.
 
 CI currently validates changes; it does not publish images, create cloud
 resources or deploy automatically. Registry, environment and deployment secrets
