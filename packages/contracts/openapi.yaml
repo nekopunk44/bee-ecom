@@ -18,6 +18,8 @@ tags:
     description: Server-authorized catalog operations.
   - name: Authentication
     description: Customer and staff sessions with server-side permissions.
+  - name: Cart
+    description: Owner-scoped customer cart with current prices and availability.
   - name: Health
     description: Process liveness and dependency readiness.
 paths:
@@ -214,6 +216,78 @@ paths:
     $ref: './catalog.json#/endpoints/session'
   /api/v1/auth/logout:
     $ref: './catalog.json#/endpoints/logout'
+  /api/v1/cart:
+    get:
+      operationId: getCustomerCart
+      summary: Get the signed-in customer's cart in the selected language
+      tags: [Cart]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: query
+          name: locale
+          schema: { type: string, enum: [ru, ro], default: ru }
+      responses:
+        '200':
+          description: Current cart with server prices and stock availability
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerCart' }
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/cart/items:
+    post:
+      operationId: setCustomerCartItem
+      summary: Set a variant quantity in the signed-in customer's cart
+      tags: [Cart]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: query
+          name: locale
+          schema: { type: string, enum: [ru, ro], default: ru }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [variantId, quantity]
+              properties:
+                variantId: { type: string, format: uuid }
+                quantity: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Updated customer cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerCart' }
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/cart/items/{variantId}:
+    delete:
+      operationId: removeCustomerCartItem
+      summary: Remove a variant from the signed-in customer's cart
+      tags: [Cart]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: path
+          name: variantId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: locale
+          schema: { type: string, enum: [ru, ro], default: ru }
+      responses:
+        '200':
+          description: Updated customer cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerCart' }
+        default:
+          $ref: '#/components/responses/ApiError'
   /api/v1/admin/media:
     $ref: './catalog.json#/endpoints/upload'
   /api/v1/media/{id}/{filename}:
@@ -263,6 +337,11 @@ paths:
           $ref: '#/components/responses/ApiError'
 components:
   securitySchemes:
+    CustomerSession:
+      type: apiKey
+      in: cookie
+      name: bee_session
+      description: HttpOnly customer or staff session cookie; cart mutations also require a configured trusted Origin.
     AdminSession:
       type: apiKey
       in: cookie
@@ -285,6 +364,40 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    CustomerCart:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CustomerCartItem' }
+    CustomerCartItem:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          variantId,
+          productSlug,
+          sku,
+          name,
+          variantName,
+          quantity,
+          unitPriceMinor,
+          currency,
+          available,
+        ]
+      properties:
+        variantId: { type: string, format: uuid }
+        productSlug: { type: string }
+        sku: { type: string }
+        name: { type: string }
+        variantName: { type: string }
+        quantity: { type: integer, minimum: 1, maximum: 100 }
+        unitPriceMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [MDL] }
+        available: { type: integer, minimum: 0 }
     Product:
       $ref: './catalog.json#/schemas/Product'
     ProductDraft:

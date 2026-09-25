@@ -225,6 +225,46 @@ const availability = await (
 ).json();
 assert.equal(availability.available, 3);
 assert.equal(availability.warehouses[0].code, warehouse.code);
+const storefront = {
+  Host: 'localhost',
+  Origin: 'http://localhost:8080',
+  Cookie: customerCookie.split(';')[0],
+};
+const emptyCart = await (
+  await request('/cart?locale=ru', 200, 'GET', undefined, storefront)
+).json();
+assert.deepEqual(emptyCart, { items: [] });
+const updatedCart = await (
+  await request(
+    '/cart/items?locale=ru',
+    200,
+    'POST',
+    { variantId: published.variants[0].id, quantity: 2 },
+    storefront,
+  )
+).json();
+assert.equal(updatedCart.items.length, 1);
+assert.equal(updatedCart.items[0].quantity, 2);
+assert.equal(updatedCart.items[0].unitPriceMinor, 12345);
+assert.equal(updatedCart.items[0].available, 3);
+const ownCart = await (
+  await request('/cart?locale=ro', 200, 'GET', undefined, storefront)
+).json();
+assert.equal(ownCart.items[0].name, translation.name);
+await request(
+  `/cart/items/${published.variants[0].id}?locale=ru`,
+  200,
+  'DELETE',
+  undefined,
+  storefront,
+);
+assert.deepEqual(
+  await (
+    await request('/cart?locale=ru', 200, 'GET', undefined, storefront)
+  ).json(),
+  { items: [] },
+);
+await request('/admin/products', 401, 'GET', undefined, storefront);
 const conflict = await request(
   '/admin/inventory/adjustments',
   409,

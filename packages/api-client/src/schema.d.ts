@@ -262,6 +262,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the signed-in customer's cart in the selected language */
+        get: operations["getCustomerCart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cart/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a variant quantity in the signed-in customer's cart */
+        post: operations["setCustomerCartItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cart/items/{variantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a variant from the signed-in customer's cart */
+        delete: operations["removeCustomerCartItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/media": {
         parameters: {
             query?: never;
@@ -334,6 +385,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CustomerCart: {
+            items: components["schemas"]["CustomerCartItem"][];
+        };
+        CustomerCartItem: {
+            /** Format: uuid */
+            variantId: string;
+            productSlug: string;
+            sku: string;
+            name: string;
+            variantName: string;
+            quantity: number;
+            unitPriceMinor: number;
+            /** @enum {string} */
+            currency: "MDL";
+            available: number;
+        };
         Product: {
             /** Format: uuid */
             id: string;
@@ -973,6 +1040,85 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    getCustomerCart: {
+        parameters: {
+            query?: {
+                locale?: "ru" | "ro";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current cart with server prices and stock availability */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCart"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    setCustomerCartItem: {
+        parameters: {
+            query?: {
+                locale?: "ru" | "ro";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    variantId: string;
+                    quantity: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated customer cart */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCart"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    removeCustomerCartItem: {
+        parameters: {
+            query?: {
+                locale?: "ru" | "ro";
+            };
+            header?: never;
+            path: {
+                variantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated customer cart */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCart"];
+                };
             };
             default: components["responses"]["ApiError"];
         };
