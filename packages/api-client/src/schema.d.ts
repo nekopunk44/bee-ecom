@@ -55,6 +55,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/products/{variantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read published variant availability across active warehouses */
+        get: operations["getVariantAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/inventory/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply an audited, idempotent warehouse stock adjustment */
+        post: operations["adjustInventory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouses for inventory management */
+        get: operations["listWarehouses"];
+        put?: never;
+        /** Create a warehouse */
+        post: operations["createWarehouse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products": {
         parameters: {
             query?: never;
@@ -484,6 +536,136 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Metadata"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    getVariantAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current unreserved quantity */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        variantId: string;
+                        available: number;
+                        warehouses: {
+                            code: string;
+                            available: number;
+                        }[];
+                    };
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    adjustInventory: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    warehouseId: string;
+                    /** Format: uuid */
+                    variantId: string;
+                    delta: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stock adjusted or idempotently replayed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        onHand: number;
+                        reserved: number;
+                        replayed: boolean;
+                    };
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    listWarehouses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Configured warehouses */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        code: string;
+                        name: string;
+                        active: boolean;
+                    }[];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    createWarehouse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Warehouse created and audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        code: string;
+                        name: string;
+                        active: boolean;
+                    };
                 };
             };
             default: components["responses"]["ApiError"];

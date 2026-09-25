@@ -58,6 +58,8 @@ assert.match(setCookie, /SameSite=Strict/i);
 cookie = setCookie.split(';')[0];
 const session = await (await request('/auth/session', 200)).json();
 assert.ok(session.permissions.includes('products.write'));
+assert.ok(session.permissions.includes('inventory.adjust'));
+assert.ok(session.permissions.includes('warehouses.manage'));
 const mediaHeaders = {
   Host: 'admin.localhost',
   Origin: origin,
@@ -135,6 +137,62 @@ await request(`/admin/products/${created.id}`, 409, 'PUT', {
 });
 const product = await (await request(`/products/${draft.slug}`, 200)).json();
 assert.equal(product.variants[0].priceMinor, 12345);
+const warehouse = await (
+  await request('/admin/warehouses', 201, 'POST', {
+    code: `ci-${suffix}`,
+    name: `CI warehouse ${suffix}`,
+  })
+).json();
+assert.equal(warehouse.active, true);
+const adjustment = {
+  warehouseId: warehouse.id,
+  variantId: published.variants[0].id,
+  delta: 3,
+  reason: 'CI stock receipt',
+};
+const adjustmentKey = randomUUID();
+const adjusted = await (
+  await request('/admin/inventory/adjustments', 200, 'POST', adjustment, {
+    'Idempotency-Key': adjustmentKey,
+  })
+).json();
+assert.deepEqual(adjusted, { onHand: 3, reserved: 0, replayed: false });
+const replayed = await (
+  await request('/admin/inventory/adjustments', 200, 'POST', adjustment, {
+    'Idempotency-Key': adjustmentKey,
+  })
+).json();
+assert.deepEqual(replayed, { onHand: 3, reserved: 0, replayed: true });
+const warehouseList = await (await request('/admin/warehouses', 200)).json();
+assert.ok(warehouseList.some((item) => item.id === warehouse.id));
+const availability = await (
+  await request(`/inventory/products/${published.variants[0].id}`, 200)
+).json();
+assert.equal(availability.available, 3);
+assert.equal(availability.warehouses[0].code, warehouse.code);
+const conflict = await request(
+  '/admin/inventory/adjustments',
+  409,
+  'POST',
+  {
+    ...adjustment,
+    delta: 4,
+  },
+  { 'Idempotency-Key': adjustmentKey },
+);
+assert.equal((await conflict.json()).error.code, 'IDEMPOTENCY_CONFLICT');
+const insufficient = await request(
+  '/admin/inventory/adjustments',
+  409,
+  'POST',
+  {
+    ...adjustment,
+    delta: -4,
+    reason: 'CI oversell guard',
+  },
+  { 'Idempotency-Key': randomUUID() },
+);
+assert.equal((await insufficient.json()).error.code, 'BELOW_RESERVED');
 const publicImage = await mediaRequest(media.url, 200, { Cookie: '' });
 assert.equal(publicImage.headers.get('content-type'), 'image/webp');
 const webp = Buffer.from(await publicImage.arrayBuffer());
@@ -170,8 +228,12 @@ execFileSync(
 );
 await request('/admin/products', 403);
 await request('/admin/products', 403, 'POST', draft);
+await request('/admin/warehouses', 403);
+await request('/admin/inventory/adjustments', 403, 'POST', adjustment, {
+  'Idempotency-Key': randomUUID(),
+});
 await request('/auth/logout', 204, 'POST');
 await request('/auth/session', 401);
 console.log(
-  'Catalog integration passed: provisioning, origin, session, media processing/storage/privacy, publication, revision conflict, SSR, role revocation and logout.',
+  'Catalog and inventory integration passed: provisioning, origin, session, media processing/storage/privacy, publication, warehouse creation, stock adjustment/replay/availability, oversell guard, revision conflict, SSR, role revocation and logout.',
 );

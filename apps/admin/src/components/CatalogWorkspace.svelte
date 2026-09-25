@@ -9,6 +9,7 @@
   } from '../lib/catalog';
   import ProductEditor from './ProductEditor.svelte';
   import ReferenceEditor from './ReferenceEditor.svelte';
+  import InventoryWorkspace from './InventoryWorkspace.svelte';
   let session = $state<Session | null>(null);
   let needsLogin = $state(false);
   let email = $state('');
@@ -25,13 +26,24 @@
   let page = $state(1);
   let total = $state(0);
   let query = $state('');
-  let tab = $state<'products' | 'references'>('products');
+  let tab = $state<'products' | 'references' | 'inventory'>('products');
   let editing = $state<Product | null | undefined>(undefined);
   let editKey = $state(0);
   const canWrite = $derived(
     session?.permissions.includes('products.write') ?? false,
   );
+  const canReadCatalog = $derived(
+    session?.permissions.includes('products.read') ?? false,
+  );
+  const canReadInventory = $derived(
+    session?.permissions.includes('inventory.read') ?? false,
+  );
   async function load() {
+    if (!canReadCatalog && !canWrite) {
+      products = [];
+      total = 0;
+      return;
+    }
     loading = true;
     error = '';
     try {
@@ -67,6 +79,11 @@
       if (result.data) {
         session = result.data;
         needsLogin = false;
+        if (
+          !session.permissions.includes('products.read') &&
+          session.permissions.includes('inventory.read')
+        )
+          tab = 'inventory';
         await load();
       }
     } catch {
@@ -158,15 +175,24 @@
       <button onclick={logout} disabled={loading}>Выйти</button>
     </div>
     <nav class="tabs" aria-label="Разделы управления">
-      <button
-        aria-current={tab === 'products' ? 'page' : undefined}
-        onclick={() => (tab = 'products')}>Товары</button
-      >{#if canWrite}<button
+      {#if canReadCatalog}<button
+          aria-current={tab === 'products' ? 'page' : undefined}
+          onclick={() => (tab = 'products')}>Товары</button
+        >{/if}{#if canWrite}<button
           aria-current={tab === 'references' ? 'page' : undefined}
           onclick={() => (tab = 'references')}>Справочники</button
+        >{/if}{#if canReadInventory}<button
+          aria-current={tab === 'inventory' ? 'page' : undefined}
+          onclick={() => (tab = 'inventory')}>Склады и остатки</button
         >{/if}
     </nav>
-    {#if tab === 'products'}<div class="toolbar">
+    {#if tab === 'inventory'}
+      <InventoryWorkspace
+        permissions={session.permissions}
+        onExpired={() => (needsLogin = true)}
+      />
+    {/if}
+    {#if tab === 'products' && canReadCatalog}<div class="toolbar">
         <form
           class="search"
           onsubmit={(e) => {
@@ -239,7 +265,10 @@
           }}>Далее</button
         >
       </div>
-    {:else}<ReferenceEditor {metadata} onSaved={() => void load()} />{/if}{/if}
+    {:else if tab === 'references'}<ReferenceEditor
+        {metadata}
+        onSaved={() => void load()}
+      />{/if}{/if}
 </section>
 
 <style>

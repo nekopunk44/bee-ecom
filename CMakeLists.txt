@@ -25,6 +25,7 @@ add_library(bee_application
   services/api/src/modules/catalog/CatalogRepository.cpp
   services/api/src/modules/media/Media.cpp
   services/api/src/modules/media/S3Storage.cpp
+  services/api/src/modules/inventory/Inventory.cpp
 )
 target_link_libraries(bee_application PUBLIC bee_platform PkgConfig::SODIUM PkgConfig::VIPS CURL::libcurl)
 target_compile_options(bee_application PRIVATE -Wall -Wextra -Wpedantic)
@@ -41,6 +42,7 @@ target_compile_options(bee-api PRIVATE -Wall -Wextra -Wpedantic)
 add_executable(bee-worker
   services/worker/src/main.cpp
   services/worker/src/OutboxRepository.cpp
+  services/worker/src/InventoryReservationWorker.cpp
 )
 target_link_libraries(bee-worker PRIVATE bee_platform)
 target_compile_options(bee-worker PRIVATE -Wall -Wextra -Wpedantic)

@@ -11,9 +11,12 @@
    S3 media processing, public catalog and product pages, search/filtering,
    server-authorized admin CRUD and SEO. Deliver end-to-end, not isolated APIs.
    See [implemented catalog and remaining scope](catalog.md).
-3. **Commerce:** auth/RBAC, cart, checkout, payment/delivery adapters, inventory
-   ledger and reservations, orders and admin processing. Test concurrent buyers
-   against real PostgreSQL, idempotent retries and reservation expiry.
+3. **Commerce (in progress):** multi-warehouse balances, append-only movements,
+   audited/idempotent adjustments, warehouse management UI/API, availability,
+   and database reservation/release/expiry primitives with a worker are
+   implemented. Customer authentication, cart, checkout/order API and UI, and
+   payment/delivery adapters remain. Acceptance requires concurrent buyers
+   against real PostgreSQL and idempotent end-to-end checkout.
 4. **Distinctive features:** compatibility, budget-aware apiary configurator,
    explainable recommendations, favorites, comparison and warehouse views.
 5. **Hardening:** rate limits, 2FA, audit coverage, Prometheus/Grafana, real-user

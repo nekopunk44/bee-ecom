@@ -12,6 +12,8 @@ security: []
 tags:
   - name: Catalog
     description: Published catalog and metadata.
+  - name: Inventory
+    description: Public availability and permission-guarded warehouse adjustments.
   - name: Administration
     description: Server-authorized catalog operations.
   - name: Authentication
@@ -25,6 +27,143 @@ paths:
     $ref: './catalog.json#/endpoints/product'
   /api/v1/catalog/metadata:
     $ref: './catalog.json#/endpoints/metadata'
+  /api/v1/inventory/products/{variantId}:
+    get:
+      operationId: getVariantAvailability
+      summary: Read published variant availability across active warehouses
+      tags: [Inventory]
+      parameters:
+        - in: path
+          name: variantId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Current unreserved quantity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [variantId, available, warehouses]
+                properties:
+                  variantId: { type: string, format: uuid }
+                  available: { type: integer, minimum: 0 }
+                  warehouses:
+                    type: array
+                    items:
+                      type: object
+                      required: [code, available]
+                      properties:
+                        code: { type: string }
+                        available: { type: integer, minimum: 0 }
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/admin/inventory/adjustments:
+    post:
+      operationId: adjustInventory
+      summary: Apply an audited, idempotent warehouse stock adjustment
+      tags: [Inventory]
+      security:
+        - AdminSession: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [warehouseId, variantId, delta, reason]
+              properties:
+                warehouseId: { type: string, format: uuid }
+                variantId: { type: string, format: uuid }
+                delta:
+                  {
+                    type: integer,
+                    minimum: -1000000,
+                    maximum: 1000000,
+                    not: { enum: [0] },
+                  }
+                reason: { type: string, minLength: 1, maxLength: 240 }
+      responses:
+        '200':
+          description: Stock adjusted or idempotently replayed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [onHand, reserved, replayed]
+                properties:
+                  onHand: { type: integer, minimum: 0 }
+                  reserved: { type: integer, minimum: 0 }
+                  replayed: { type: boolean }
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/admin/warehouses:
+    get:
+      operationId: listWarehouses
+      summary: List warehouses for inventory management
+      tags: [Inventory]
+      security:
+        - AdminSession: []
+      responses:
+        '200':
+          description: Configured warehouses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, code, name, active]
+                  properties:
+                    id: { type: string, format: uuid }
+                    code: { type: string }
+                    name: { type: string }
+                    active: { type: boolean }
+        default:
+          $ref: '#/components/responses/ApiError'
+    post:
+      operationId: createWarehouse
+      summary: Create a warehouse
+      tags: [Inventory]
+      security:
+        - AdminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code, name]
+              properties:
+                code:
+                  {
+                    type: string,
+                    pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
+                    maxLength: 64,
+                  }
+                name: { type: string, minLength: 1, maxLength: 120 }
+      responses:
+        '201':
+          description: Warehouse created and audited
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, code, name, active]
+                properties:
+                  id: { type: string, format: uuid }
+                  code: { type: string }
+                  name: { type: string }
+                  active: { type: boolean }
+        default:
+          $ref: '#/components/responses/ApiError'
   /api/v1/admin/products:
     $ref: './catalog.json#/endpoints/adminProducts'
   /api/v1/admin/products/{id}:

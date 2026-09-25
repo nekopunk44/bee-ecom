@@ -1,4 +1,5 @@
 #include "OutboxRepository.hpp"
+#include "InventoryReservationWorker.hpp"
 #include "platform/Config.hpp"
 #include "platform/Logging.hpp"
 #include <trantor/utils/Logger.h>
@@ -21,6 +22,7 @@ int main() {
         auto database = drogon::orm::DbClient::newPgClient(config.postgresConnection, 2);
         database->setTimeout(3.0);
         bee::outbox::Repository repository(database);
+        bee::inventory::ReservationWorker inventoryWorker(database);
         bee::log("bee-worker", "info", "started");
         while (!stopping) {
             try {
@@ -29,6 +31,12 @@ int main() {
                     Json::Value fields;
                     fields["count"] = static_cast<Json::UInt64>(count);
                     bee::log("bee-worker", "warn", "unhandled_events_deferred", fields);
+                }
+                const auto expired = inventoryWorker.expireBatch();
+                if (expired > 0) {
+                    Json::Value fields;
+                    fields["count"] = static_cast<Json::UInt64>(expired);
+                    bee::log("bee-worker", "info", "inventory_reservations_expired", fields);
                 }
                 // Timestamp is refreshed only after a successful database poll.
                 std::ofstream("/tmp/bee-worker-heartbeat", std::ios::trunc) << "ok\n";
