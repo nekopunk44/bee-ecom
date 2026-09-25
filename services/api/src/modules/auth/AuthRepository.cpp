@@ -14,6 +14,24 @@ drogon::orm::Result Repository::principal(const std::string& hash) const {
 drogon::orm::Result Repository::credentials(const std::string& email) const {
     return db_->execSqlSync("SELECT id::text,password_hash,active FROM users WHERE email=$1",email);
 }
+drogon::orm::Result Repository::registerCustomer(const std::string& email,
+                                                 const std::string& passwordHash,
+                                                 const std::string& tokenHash) const {
+    return db_->execSqlSync(R"SQL(
+        WITH inserted AS (
+            INSERT INTO users(email, password_hash) VALUES($1, $2)
+            ON CONFLICT (email) DO NOTHING
+            RETURNING id, email
+        ), assigned AS (
+            INSERT INTO user_roles(user_id, role_code)
+            SELECT id, 'CUSTOMER' FROM inserted
+        ), session AS (
+            INSERT INTO sessions(token_hash, user_id, expires_at)
+            SELECT $3, id, now() + interval '30 minutes' FROM inserted
+        )
+        SELECT id::text, email FROM inserted
+    )SQL", email, passwordHash, tokenHash);
+}
 int Repository::consumeAttempt(const std::string& hash) const {
     const auto rows=db_->execSqlSync(R"SQL(
       INSERT INTO auth_throttles(key_hash,attempts,resets_at) VALUES($1,1,now()+interval '15 minutes')

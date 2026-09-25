@@ -67,8 +67,9 @@ Docker builds the C++ toolchain so local native installation is optional.
 - Compatibility and configurator rules are server-owned, deterministic,
   versioned and explainable. No external LLM in core purchase decisions.
 - RBAC is enforced in API services. A hidden admin control is not authorization.
-- Auth will use Argon2id and rotating, revocable HttpOnly refresh cookies;
-  privileged operations require CSRF defenses and server-side permissions.
+- Auth uses Argon2id, revocable HttpOnly session cookies and server-side
+  permissions. Login and registration accept only the configured storefront or
+  admin Origin; privileged writes still require the admin Origin.
 - Public HTML remains readable without JavaScript. No sensitive session state
   or auth tokens in localStorage; no caching checkout or payment requests.
 

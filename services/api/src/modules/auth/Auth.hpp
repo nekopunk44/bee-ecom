@@ -11,16 +11,21 @@ std::string hashPassword(const std::string& password);
 std::string requiredEnv(const char* name);
 class Service {
 public:
-    Service(drogon::orm::DbClientPtr db, bool secure, std::string origin);
+    Service(drogon::orm::DbClientPtr db, bool secure, std::string origin,
+            std::string storefrontOrigin);
     Login login(const std::string& email, const std::string& password, const std::string& address);
+    Login registerCustomer(const std::string& email, const std::string& password,
+                           const std::string& address);
     Principal require(const drogon::HttpRequestPtr& request, const std::string& permission = "") const;
     void requireOrigin(const drogon::HttpRequestPtr& request) const;
+    void requireAuthOrigin(const drogon::HttpRequestPtr& request) const;
     void logout(const drogon::HttpRequestPtr& request) const;
     void cookie(const drogon::HttpResponsePtr& response, const std::string& token, bool clear = false) const;
 private:
     Repository repository_;
     bool secure_;
     std::string origin_;
+    std::string storefrontOrigin_;
     std::string dummyHash_;
 };
 void registerRoutes(std::shared_ptr<Service> service, Executor& executor);

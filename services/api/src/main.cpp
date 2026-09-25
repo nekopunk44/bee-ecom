@@ -42,7 +42,8 @@ int main() {
         bee::configureHttp();
         bee::Executor executor(4);
         auto auth = std::make_shared<bee::auth::Service>(postgres,
-            config.environment=="production" || config.environment=="staging", bee::auth::requiredEnv("ADMIN_ORIGIN"));
+            config.environment=="production" || config.environment=="staging",
+            bee::auth::requiredEnv("ADMIN_ORIGIN"), bee::auth::requiredEnv("STOREFRONT_ORIGIN"));
         bee::auth::registerRoutes(auth,executor);
         bee::catalog::registerRoutes(std::make_shared<bee::catalog::Service>(std::make_shared<bee::catalog::Repository>(postgres)),auth,executor);
         bee::media::registerRoutes(std::make_shared<bee::media::Service>(postgres,std::make_shared<bee::media::S3Storage>()),auth,executor);

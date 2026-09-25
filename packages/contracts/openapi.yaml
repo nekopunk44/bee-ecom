@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Bee Platform API
   version: 0.2.0
-  description: Foundation and catalog API. Administrative writes require a server session and exact Origin.
+  description: Bee storefront and commerce API. Mutations require a server session and trusted Origin.
   license:
     name: Proprietary
     url: https://example.invalid/license
@@ -17,7 +17,7 @@ tags:
   - name: Administration
     description: Server-authorized catalog operations.
   - name: Authentication
-    description: Short-lived administrative sessions.
+    description: Customer and staff sessions with server-side permissions.
   - name: Health
     description: Process liveness and dependency readiness.
 paths:
@@ -176,6 +176,40 @@ paths:
     $ref: './catalog.json#/endpoints/attributes'
   /api/v1/auth/login:
     $ref: './catalog.json#/endpoints/login'
+  /api/v1/auth/register:
+    post:
+      operationId: registerCustomer
+      summary: Create a customer account and start a session
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password:
+                  {
+                    type: string,
+                    format: password,
+                    minLength: 12,
+                    maxLength: 128,
+                  }
+      responses:
+        '201':
+          description: Customer account created; the session is in an HttpOnly cookie
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email]
+                properties:
+                  email: { type: string, format: email }
+        default:
+          $ref: '#/components/responses/ApiError'
   /api/v1/auth/session:
     $ref: './catalog.json#/endpoints/session'
   /api/v1/auth/logout:

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cctype>
+#include <regex>
 
 namespace bee::auth {
 std::string requiredEnv(const char* name) {
@@ -25,13 +26,27 @@ std::string hashPassword(const std::string& password) {
         throw std::runtime_error("Password hashing failed");
     return hash;
 }
-Service::Service(drogon::orm::DbClientPtr db, bool secure, std::string origin)
-    : repository_(std::move(db)), secure_(secure), origin_(std::move(origin)), dummyHash_(hashPassword("non-login-dummy-password")) {
-    if (origin_.empty() || (secure_ && !origin_.starts_with("https://")))
-        throw std::invalid_argument("Invalid ADMIN_ORIGIN");
+Service::Service(drogon::orm::DbClientPtr db, bool secure, std::string origin,
+                 std::string storefrontOrigin)
+    : repository_(std::move(db)), secure_(secure), origin_(std::move(origin)),
+      storefrontOrigin_(std::move(storefrontOrigin)),
+      dummyHash_(hashPassword("non-login-dummy-password")) {
+    static const std::regex originPattern(R"(^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$)");
+    const auto validOrigin = [](const std::string& value) {
+        return std::regex_match(value, originPattern);
+    };
+    if (!validOrigin(origin_) || !validOrigin(storefrontOrigin_) ||
+        (secure_ && (!origin_.starts_with("https://") ||
+                     !storefrontOrigin_.starts_with("https://"))))
+        throw std::invalid_argument("Invalid trusted application origins");
 }
 void Service::requireOrigin(const drogon::HttpRequestPtr& request) const {
     if (request->getHeader("origin") != origin_)
+        throw Error(403, "ORIGIN_REJECTED", "Request origin is not allowed");
+}
+void Service::requireAuthOrigin(const drogon::HttpRequestPtr& request) const {
+    const auto origin = request->getHeader("origin");
+    if (origin != origin_ && origin != storefrontOrigin_)
         throw Error(403, "ORIGIN_REJECTED", "Request origin is not allowed");
 }
 Principal Service::require(const drogon::HttpRequestPtr& request, const std::string& permission) const {
@@ -64,6 +79,29 @@ Login Service::login(const std::string& rawEmail, const std::string& password, c
     repository_.createSession(hashToken(token),id);
     return {token, {id, email, Json::Value(Json::arrayValue)}};
 }
+Login Service::registerCustomer(const std::string& rawEmail, const std::string& password,
+                                const std::string& address) {
+    if (rawEmail.empty() || rawEmail.size() > 254 || password.size() < 12 ||
+        password.size() > 128 || password.find_first_not_of(" \t\r\n") == std::string::npos)
+        throw Error(422, "INVALID_REGISTRATION", "Provide a valid email and a password of at least 12 characters");
+    static const std::regex emailPattern(
+        R"(^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$)");
+    if (!std::regex_match(rawEmail, emailPattern))
+        throw Error(422, "INVALID_REGISTRATION", "Provide a valid email and a password of at least 12 characters");
+    std::string email = rawEmail;
+    std::transform(email.begin(), email.end(), email.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (repository_.consumeAttempt(hashToken("register-email:" + email)) > 3 ||
+        repository_.consumeAttempt(hashToken("register-address:" + address)) > 10)
+        throw Error(429, "RATE_LIMITED", "Too many registration attempts. Try again later");
+
+    unsigned char random[32]; char token[65];
+    randombytes_buf(random, sizeof random); sodium_bin2hex(token, sizeof token, random, sizeof random);
+    const auto rows = repository_.registerCustomer(email, hashPassword(password), hashToken(token));
+    if (rows.empty()) throw Error(409, "EMAIL_UNAVAILABLE", "This email address is already registered");
+    Json::Value permissions(Json::arrayValue);
+    return {token, {rows[0]["id"].as<std::string>(), email, permissions}};
+}
 void Service::logout(const drogon::HttpRequestPtr& request) const {
     repository_.revoke(hashToken(request->getCookie("bee_session")));
 }
@@ -76,7 +114,7 @@ void Service::cookie(const drogon::HttpResponsePtr& response, const std::string&
 void registerRoutes(std::shared_ptr<Service> service, Executor& executor) {
     drogon::app().registerHandler("/api/v1/auth/login", [service, &executor](const drogon::HttpRequestPtr& req, Reply&& callback) {
         dispatch(executor, req, std::move(callback), [service, req] {
-            service->requireOrigin(req); auto body = jsonBody(req);
+            service->requireAuthOrigin(req); auto body = jsonBody(req);
             if (!body["email"].isString() || !body["password"].isString()) throw Error(400, "INVALID_BODY", "Email and password are required");
             // API is private behind Nginx; it overwrites X-Real-IP. For direct local requests use peer address.
             const auto address = req->getHeader("x-real-ip").empty() ? req->peerAddr().toIp() : req->getHeader("x-real-ip");
@@ -84,6 +122,20 @@ void registerRoutes(std::shared_ptr<Service> service, Executor& executor) {
             Json::Value result; result["email"] = login.principal.email;
             auto response = drogon::HttpResponse::newHttpJsonResponse(result);
             service->cookie(response, login.token); return response;
+        });
+    }, {drogon::Post});
+    drogon::app().registerHandler("/api/v1/auth/register", [service, &executor](const drogon::HttpRequestPtr& req, Reply&& callback) {
+        dispatch(executor, req, std::move(callback), [service, req] {
+            service->requireAuthOrigin(req); auto body = jsonBody(req);
+            if (!body["email"].isString() || !body["password"].isString())
+                throw Error(400, "INVALID_BODY", "Email and password are required");
+            const auto address = req->getHeader("x-real-ip").empty() ? req->peerAddr().toIp() : req->getHeader("x-real-ip");
+            const auto registered = service->registerCustomer(body["email"].asString(), body["password"].asString(), address);
+            Json::Value result; result["email"] = registered.principal.email;
+            auto response = drogon::HttpResponse::newHttpJsonResponse(result);
+            response->setStatusCode(drogon::k201Created);
+            service->cookie(response, registered.token);
+            return response;
         });
     }, {drogon::Post});
     drogon::app().registerHandler("/api/v1/auth/session", [service, &executor](const drogon::HttpRequestPtr& req, Reply&& callback) {
@@ -95,7 +147,7 @@ void registerRoutes(std::shared_ptr<Service> service, Executor& executor) {
     }, {drogon::Get});
     drogon::app().registerHandler("/api/v1/auth/logout", [service, &executor](const drogon::HttpRequestPtr& req, Reply&& callback) {
         dispatch(executor, req, std::move(callback), [service, req] {
-            service->requireOrigin(req); service->logout(req);
+            service->requireAuthOrigin(req); service->logout(req);
             auto response = drogon::HttpResponse::newHttpResponse(); response->setStatusCode(drogon::k204NoContent);
             service->cookie(response, "", true); return response;
         });

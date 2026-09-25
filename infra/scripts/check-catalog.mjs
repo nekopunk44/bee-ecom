@@ -60,6 +60,61 @@ const session = await (await request('/auth/session', 200)).json();
 assert.ok(session.permissions.includes('products.write'));
 assert.ok(session.permissions.includes('inventory.adjust'));
 assert.ok(session.permissions.includes('warehouses.manage'));
+
+const customer = {
+  email: `shopper-${suffix}@example.invalid`,
+  password: `customer-${randomUUID()}-long`,
+};
+const storefrontOrigin = { Host: 'localhost', Origin: 'http://localhost:8080' };
+await request('/auth/register', 403, 'POST', customer, {
+  ...storefrontOrigin,
+  Origin: 'https://untrusted.invalid',
+});
+await request(
+  '/auth/register',
+  422,
+  'POST',
+  {
+    email: customer.email,
+    password: 'short',
+  },
+  storefrontOrigin,
+);
+const registration = await request(
+  '/auth/register',
+  201,
+  'POST',
+  customer,
+  storefrontOrigin,
+);
+const customerCookie = registration.headers.get('set-cookie');
+assert.match(customerCookie, /HttpOnly/i);
+assert.match(customerCookie, /SameSite=Strict/i);
+const customerSession = await (
+  await request('/auth/session', 200, 'GET', undefined, {
+    Cookie: customerCookie.split(';')[0],
+  })
+).json();
+assert.equal(customerSession.email, customer.email);
+assert.deepEqual(customerSession.permissions, []);
+await request('/auth/register', 409, 'POST', customer, storefrontOrigin);
+const customerLogin = await request(
+  '/auth/login',
+  200,
+  'POST',
+  customer,
+  storefrontOrigin,
+);
+const customerLoginCookie = customerLogin.headers
+  .get('set-cookie')
+  .split(';')[0];
+await request('/auth/logout', 204, 'POST', undefined, {
+  ...storefrontOrigin,
+  Cookie: customerLoginCookie,
+});
+await request('/auth/session', 401, 'GET', undefined, {
+  Cookie: customerLoginCookie,
+});
 const mediaHeaders = {
   Host: 'admin.localhost',
   Origin: origin,
@@ -222,7 +277,7 @@ execFileSync(
     'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"',
   ],
   {
-    input: `DELETE FROM user_roles WHERE user_id=(SELECT id FROM users WHERE email='${credentials.email}');\n`,
+    input: `DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE email IN ('${credentials.email}','${customer.email}'));\nDELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email IN ('${credentials.email}','${customer.email}'));\nDELETE FROM users WHERE email IN ('${credentials.email}','${customer.email}');\n`,
     stdio: ['pipe', 'pipe', 'pipe'],
   },
 );
@@ -235,5 +290,5 @@ await request('/admin/inventory/adjustments', 403, 'POST', adjustment, {
 await request('/auth/logout', 204, 'POST');
 await request('/auth/session', 401);
 console.log(
-  'Catalog and inventory integration passed: provisioning, origin, session, media processing/storage/privacy, publication, warehouse creation, stock adjustment/replay/availability, oversell guard, revision conflict, SSR, role revocation and logout.',
+  'Auth, catalog and inventory integration passed: customer registration/login/logout and origin checks, staff provisioning and role revocation, media processing/privacy, publication, warehouse creation, stock adjustment/replay/availability, oversell guard, revision conflict and SSR.',
 );
