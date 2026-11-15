@@ -264,7 +264,15 @@ assert.deepEqual(
   ).json(),
   { items: [] },
 );
-await request('/admin/products', 401, 'GET', undefined, storefront);
+// Покупатель вошёл, но прав на управление каталогом у него нет: 403, а не 401.
+const customerOnAdmin = await request(
+  '/admin/products',
+  403,
+  'GET',
+  undefined,
+  storefront,
+);
+assert.equal((await customerOnAdmin.json()).error.code, 'FORBIDDEN');
 const conflict = await request(
   '/admin/inventory/adjustments',
   409,
