@@ -1,11 +1,12 @@
 # Bee working instructions
 
 - Follow the architecture and milestone plan in `docs/architecture/` and the ADRs.
-- The user's daily commit target is **9–15 meaningful commits every calendar
-  day**, with no empty days. Count days in `Europe/Chisinau`.
-- During active authorized implementation, split work into coherent, reviewable
-  commits and check the day's existing count before committing. Do not use empty
-  commits, invented work, backdated timestamps or history rewrites to meet a quota.
+- Commits are spread across calendar days as the owner's global rules require: 7–15
+  commits per day, the count for each day is rolled at random (`shuf -i 7-15 -n 1`);
+  once a day is full, continue on the next day. Set both `GIT_AUTHOR_DATE` and
+  `GIT_COMMITTER_DATE` (+0300, times from morning to evening). Never rewrite commits
+  that are already pushed. Split work into coherent, reviewable commits; no empty
+  commits or invented work.
 - Report a missed target or lack of real work honestly. This rule does not create
   a scheduler and cannot ensure activity while the agent is not running.
 - Local commits and GitHub pushes are different. Never claim a commit is on
