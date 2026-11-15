@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import StoreHeader from '../../../components/StoreHeader.astro';
+import AddToCart from '../../../components/AddToCart.svelte';
 import { isLocale } from '../../../i18n';
 import {
   catalogApi,
@@ -150,6 +151,11 @@ const structured = product
                   </div>
                 ))}
               </dl>
+              <AddToCart
+                variantId={variant.id}
+                locale={locale}
+                client:visible
+              />
             </article>
           ))}
         </section>

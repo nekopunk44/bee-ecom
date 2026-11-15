@@ -17,6 +17,7 @@ const suffix = Astro.url.pathname.replace(/^\/(ru|ro)/, '');
   </a>
   <nav aria-label={locale === 'ru' ? 'Навигация' : 'Navigare'}>
     <a href={`/${locale}/catalog/`}>{catalogText[locale].catalog}</a>
+    <a href={`/${locale}/cart/`}>{locale === 'ru' ? 'Корзина' : 'Coș'}</a>
     <a href={`/${locale}/account/`}>{locale === 'ru' ? 'Аккаунт' : 'Cont'}</a>
     <a
       href={`/ru${suffix}`}
