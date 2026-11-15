@@ -14,8 +14,8 @@
 3. **Commerce (in progress):** multi-warehouse balances, append-only movements,
    audited/idempotent adjustments, warehouse management UI/API, availability,
    and database reservation/release/expiry primitives with a worker are
-   implemented. Customer authentication, cart, checkout/order API and UI, and
-   payment/delivery adapters remain. Acceptance requires concurrent buyers
+   implemented, as are customer accounts and the cart (API and storefront UI).
+   Checkout/order API and UI and payment/delivery adapters remain. Acceptance requires concurrent buyers
    against real PostgreSQL and idempotent end-to-end checkout.
 4. **Distinctive features:** compatibility, budget-aware apiary configurator,
    explainable recommendations, favorites, comparison and warehouse views.
