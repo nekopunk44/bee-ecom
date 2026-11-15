@@ -40,7 +40,7 @@ export const catalogText = {
     price: 'Цена',
     noImage: 'Фото готовится',
     orderNotice:
-      'Онлайн-заказы пока недоступны. Каталог находится на этапе подготовки.',
+      'Товар можно отложить в корзину. Оформление заказа и доставка скоро появятся.',
     back: 'Вернуться в каталог',
     missing: 'Товар не найден',
   },
@@ -74,7 +74,7 @@ export const catalogText = {
     price: 'Preț',
     noImage: 'Fotografie în pregătire',
     orderNotice:
-      'Comenzile online nu sunt încă disponibile. Catalogul este în pregătire.',
+      'Produsul poate fi adăugat în coș. Plasarea comenzii și livrarea vor fi disponibile în curând.',
     back: 'Înapoi la catalog',
     missing: 'Produsul nu a fost găsit',
   },

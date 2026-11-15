@@ -8,12 +8,12 @@ export const messages = {
       'Оборудование для пчеловодства в Молдове. Готовим новый магазин Bee.',
     skip: 'Перейти к содержимому',
     locale: 'Язык сайта',
-    label: 'Современная пасека · Молдова',
+    label: 'Современная пасека в Молдове',
     heading: 'Хорошая пасека начинается с правильных вещей.',
     intro:
       'Продуманное оборудование. Совместимые системы. Всё, что помогает заботиться о пчёлах и развивать своё дело.',
     notice:
-      'Изучайте каталог. Оформление заказов появится после открытия магазина.',
+      'Выбирайте в каталоге и складывайте в корзину. Оформление заказа и доставка скоро появятся.',
     section: 'Основа вашей пасеки',
     cards: [
       {
@@ -39,12 +39,12 @@ export const messages = {
     description: 'Echipamente apicole în Moldova. Pregătim noul magazin Bee.',
     skip: 'Salt la conținut',
     locale: 'Limba site-ului',
-    label: 'Stupina modernă · Moldova',
+    label: 'Stupina modernă în Moldova',
     heading: 'O stupină bună începe cu alegerile potrivite.',
     intro:
       'Echipamente bine gândite. Sisteme compatibile. Tot ce te ajută să îngrijești albinele și să îți dezvolți afacerea.',
     notice:
-      'Descoperă catalogul. Comenzile vor fi disponibile după deschiderea magazinului.',
+      'Alege din catalog și adaugă în coș. Plasarea comenzii și livrarea vor fi disponibile în curând.',
     section: 'Baza stupinei tale',
     cards: [
       {

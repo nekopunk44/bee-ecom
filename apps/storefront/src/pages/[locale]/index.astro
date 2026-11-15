@@ -18,6 +18,8 @@ const t = messages[locale];
       <a href={`/${locale}/catalog/`}>
         {locale === 'ru' ? 'Каталог' : 'Catalog'}
       </a>
+      <a href={`/${locale}/cart/`}>{locale === 'ru' ? 'Корзина' : 'Coș'}</a>
+      <a href={`/${locale}/account/`}>{locale === 'ru' ? 'Аккаунт' : 'Cont'}</a>
       <a
         href="/ru/"
         lang="ru"
@@ -56,7 +58,7 @@ const t = messages[locale];
     </section>
   </main>
   <footer class="container">
-    <span>Bee · Moldova</span>
+    <span>Bee, Moldova</span>
     <span>{t.footer}</span>
   </footer>
 </Layout>
