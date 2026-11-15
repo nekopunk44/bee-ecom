@@ -196,7 +196,7 @@
             {#each products as product}
               {#each product.variants.filter((variant) => variant.active) as variant}
                 <option value={variant.id}
-                  >{product.translations.ru.name} · {variant.name} · {variant.sku}</option
+                  >{product.translations.ru.name}, {variant.name}, {variant.sku}</option
                 >
               {/each}
             {/each}

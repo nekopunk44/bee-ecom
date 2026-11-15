@@ -134,8 +134,9 @@ const structured = product
           {product.variants.map((variant) => (
             <article>
               <h3>{variant.name}</h3>
+              <p class="variant-price">{money(variant.priceMinor, locale)}</p>
               <p>
-                {t.sku}: {variant.sku} · {money(variant.priceMinor, locale)}
+                {t.sku}: {variant.sku}
               </p>
               <dl>
                 {Object.entries(variant.attributes).map(([code, value]) => (
@@ -227,6 +228,11 @@ const structured = product
   }
   section {
     margin-top: var(--space-xl);
+  }
+  .variant-price {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
   }
   article {
     padding-block: var(--space-md);
