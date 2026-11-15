@@ -85,12 +85,24 @@ const t = messages[locale];
   }
   nav {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-xs) var(--space-sm);
   }
   nav a {
     padding: var(--space-sm);
     text-decoration: none;
+  }
+  /* На узком телефоне пять ссылок не должны выталкивать страницу вбок. */
+  @media (max-width: 30rem) {
+    nav {
+      gap: 0;
+      font-size: var(--text-sm);
+    }
+    nav a {
+      padding: var(--space-xs);
+    }
   }
   nav a[aria-current] {
     text-decoration: underline;

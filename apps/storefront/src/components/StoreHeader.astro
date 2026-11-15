@@ -55,9 +55,16 @@ const suffix = Astro.url.pathname.replace(/^\/(ru|ro)/, '');
   }
   nav {
     display: flex;
-    gap: var(--space-md);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-xs) var(--space-md);
     align-items: center;
     font-size: var(--text-sm);
+  }
+  @media (max-width: 30rem) {
+    nav {
+      gap: var(--space-xs) var(--space-sm);
+    }
   }
   nav a[aria-current] {
     text-decoration-color: var(--color-accent);
