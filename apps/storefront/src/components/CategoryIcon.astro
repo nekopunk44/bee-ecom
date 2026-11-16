@@ -1,0 +1,48 @@
+---
+interface Props {
+  /** Адрес категории: по нему выбирается рисунок внутри шестигранника. */
+  slug: string;
+}
+const { slug } = Astro.props;
+const kinds = [
+  ['hive', /hive|uley|ulei|stup|korpus|corp/],
+  ['frame', /frame|ram|voshchin|wax|fagure/],
+  ['extractor', /extract|medogon|honey|miere|otkach/],
+  ['smoker', /smok|dym|afum|tool|instrument|unelt/],
+  ['suit', /suit|cloth|kostum|odezh|protect|masc|setk/],
+  ['care', /care|treat|lech|feed|podkorm|ingrij|tratament/],
+] as const;
+const kind = kinds.find(([, pattern]) => pattern.test(slug))?.[0] ?? 'comb';
+---
+
+<svg width="44" height="50" viewBox="0 0 30 34" aria-hidden="true">
+  <polygon
+    points="15,1 29,9 29,25 15,33 1,25 1,9"
+    fill="#fff2c7"
+    stroke="#17150f"
+    stroke-width="1.5"
+  ></polygon>
+  <g fill="none" stroke="#17150f" stroke-width="1.5" stroke-linejoin="round">
+    {kind === 'hive' && <path d="M9 13h12v10H9z M8 13l7-4 7 4" />}
+    {kind === 'frame' && (
+      <path d="M9 11h12v12H9z M9 15h12 M13 11v12 M17 11v12" />
+    )}
+    {kind === 'extractor' && (
+      <>
+        <circle cx="15" cy="17" r="6" />
+        <path d="M15 11v-3 M15 17l3-2" />
+      </>
+    )}
+    {kind === 'smoker' && <path d="M11 23V14h8v9z M13 14l2-4 2 4 M19 16h3" />}
+    {kind === 'suit' && (
+      <>
+        <circle cx="15" cy="15" r="5" />
+        <path d="M8 25c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5" />
+      </>
+    )}
+    {kind === 'care' && <path d="M12 10h6v4l2 9h-10l2-9z" />}
+    {kind === 'comb' && (
+      <path d="M15 11l4 2.3v4.6L15 20.2l-4-2.3v-4.6z M15 20.2v3.3" />
+    )}
+  </g>
+</svg>

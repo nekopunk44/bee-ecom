@@ -1,182 +1,408 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import StoreHeader from '../../components/StoreHeader.astro';
+import StoreFooter from '../../components/StoreFooter.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import CategoryIcon from '../../components/CategoryIcon.astro';
 import { isLocale, messages } from '../../i18n';
+import { catalogApi, type Metadata, type Product } from '../../lib/catalog';
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return Astro.redirect('/404');
 const t = messages[locale];
+let categories: Metadata['categories'] = [];
+let fresh: Product[] = [];
+try {
+  const api = catalogApi();
+  const [references, products] = await Promise.all([
+    api.GET('/api/v1/catalog/metadata', {
+      params: { query: { locale } },
+      signal: AbortSignal.timeout(3000),
+    }),
+    api.GET('/api/v1/products', {
+      params: { query: { locale, sort: 'newest', page: 1, limit: 4 } },
+      signal: AbortSignal.timeout(3000),
+    }),
+  ]);
+  categories = references.data?.categories ?? [];
+  fresh = products.data?.items ?? [];
+} catch {
+  // Главная остаётся рабочей и без каталога: первый экран, поиск и подвал не зависят от API.
+}
+const catalog = `/${locale}/catalog/`;
 ---
 
 <Layout locale={locale} title={t.title} description={t.description}>
-  <a class="skip-link" href="#main">
-    {t.skip}
-  </a>
-  <header class="container masthead">
-    <a class="brand" href={`/${locale}/`} aria-label="Bee">
-      bee<span aria-hidden="true">·</span>
-    </a>
-    <nav aria-label={t.locale}>
-      <a href={`/${locale}/catalog/`}>
-        {locale === 'ru' ? 'Каталог' : 'Catalog'}
-      </a>
-      <a href={`/${locale}/cart/`}>{locale === 'ru' ? 'Корзина' : 'Coș'}</a>
-      <a href={`/${locale}/account/`}>{locale === 'ru' ? 'Аккаунт' : 'Cont'}</a>
-      <a
-        href="/ru/"
-        lang="ru"
-        aria-current={locale === 'ru' ? 'page' : undefined}
-      >
-        RU
-      </a>
-      <span aria-hidden="true">/</span>
-      <a
-        href="/ro/"
-        lang="ro"
-        aria-current={locale === 'ro' ? 'page' : undefined}
-      >
-        RO
-      </a>
-    </nav>
-  </header>
-  <main id="main" class="container">
+  <StoreHeader locale={locale} />
+  <main id="main">
     <section class="hero" aria-labelledby="hero-heading">
-      <p class="eyebrow">{t.label}</p>
-      <h1 id="hero-heading">{t.heading}</h1>
-      <p class="intro">{t.intro}</p>
-      <p class="notice">{t.notice}</p>
-    </section>
-    <section class="categories" aria-labelledby="categories-heading">
-      <h2 id="categories-heading">{t.section}</h2>
-      <div class="grid">
-        {t.cards.map((card) => (
-          <article>
-            <span class="eyebrow">{card.number}</span>
-            <h3>{card.title}</h3>
-            <p>{card.text}</p>
-          </article>
-        ))}
+      <div class="container hero-inner">
+        <div class="hero-text">
+          <p class="label">{t.label}</p>
+          <h1 id="hero-heading" class="display">
+            {t.heading}
+          </h1>
+          <p class="intro">{t.intro}</p>
+          <div class="hero-actions">
+            <a class="button honey" href={catalog}>
+              {t.open}
+            </a>
+          </div>
+          <div class="queries">
+            <span>{t.popular}:</span>
+            <ul>
+              {t.queries.map((query) => (
+                <li>
+                  <a href={`${catalog}?q=${encodeURIComponent(query)}`}>
+                    {query}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p class="notice">{t.notice}</p>
+        </div>
+        <svg
+          class="art"
+          width="520"
+          height="500"
+          viewBox="0 0 520 500"
+          role="img"
+          aria-label={t.art}
+        >
+          <g fill="none" stroke="#3a3628" stroke-width="2">
+            <polygon points="90,40 142,70 142,130 90,160 38,130 38,70"></polygon>
+            <polygon points="430,300 482,330 482,390 430,420 378,390 378,330"></polygon>
+            <polygon points="455,90 507,120 507,180 455,210 403,180 403,120"></polygon>
+            <polygon points="60,330 112,360 112,420 60,450 8,420 8,360"></polygon>
+          </g>
+          <polygon
+            points="455,90 507,120 507,180 455,210 403,180 403,120"
+            fill="#f5b700"
+            opacity="0.18"
+          ></polygon>
+          <polygon
+            points="260,30 445,137 445,353 260,460 75,353 75,137"
+            fill="#f5b700"
+          ></polygon>
+          <g
+            stroke="#17150f"
+            stroke-width="5"
+            stroke-linejoin="round"
+            stroke-linecap="round"
+          >
+            <path d="M160 168 L260 138 L360 168 Z" fill="#ffffff"></path>
+            <rect x="168" y="168" width="184" height="36" fill="#17150f"></rect>
+            <rect x="172" y="204" width="176" height="78" fill="#ffffff"></rect>
+            <rect x="172" y="282" width="176" height="78" fill="#ffffff"></rect>
+            <path d="M232 243 h56 M232 321 h56" fill="none"></path>
+            <rect x="166" y="360" width="188" height="16" fill="#17150f"></rect>
+            <path d="M228 368 h64" stroke="#f5b700"></path>
+            <path d="M184 376 v34 M336 376 v34" fill="none"></path>
+          </g>
+          <ellipse cx="396" cy="232" rx="13" ry="9" fill="#17150f"></ellipse>
+          <ellipse
+            cx="386"
+            cy="222"
+            rx="8"
+            ry="5"
+            fill="#ffffff"
+            opacity="0.9"
+          ></ellipse>
+        </svg>
       </div>
     </section>
+
+    <section class="container block" aria-labelledby="catalog-heading">
+      <div class="block-head">
+        <h2 id="catalog-heading" class="display">
+          {t.catalog}
+        </h2>
+        <a href={catalog}>{t.all}</a>
+      </div>
+      {categories.length > 0 ? (
+        <ul class="categories">
+          {categories.map((category) => (
+            <li>
+              <a href={`${catalog}?category=${category.id}`}>
+                <CategoryIcon slug={category.slug} />
+                <span>{category.name}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul class="categories">
+          <li>
+            <a href={catalog}>
+              <CategoryIcon slug="" />
+              <span>{t.all}</span>
+            </a>
+          </li>
+        </ul>
+      )}
+    </section>
+
+    {fresh.length > 0 && (
+      <section class="container block" aria-labelledby="fresh-heading">
+        <div class="block-head">
+          <h2 id="fresh-heading" class="display">
+            {t.fresh}
+          </h2>
+          <p>{t.freshNote}</p>
+        </div>
+        <div class="products">
+          {fresh.map((product) => (
+            <ProductCard product={product} locale={locale} level={3} />
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="container block" aria-labelledby="find-heading">
+      <div class="find">
+        <div>
+          <h2 id="find-heading" class="display">
+            {t.find}
+          </h2>
+          <p>{t.findText}</p>
+        </div>
+        <form method="get" action={catalog} role="search">
+          <label>
+            {t.findLabel}
+            <input name="q" type="search" maxlength="200" required />
+          </label>
+          <button class="button" type="submit">
+            {t.findButton}
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <div class="container block facts">
+      {t.facts.map((fact) => (
+        <section>
+          <h2 class="display">{fact.title}</h2>
+          <p>{fact.text}</p>
+        </section>
+      ))}
+    </div>
   </main>
-  <footer class="container">
-    <span>Bee, Moldova</span>
-    <span>{t.footer}</span>
-  </footer>
+  <StoreFooter locale={locale} />
 </Layout>
 <style>
-  .masthead {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-block: var(--space-lg);
-    border-bottom: 1px solid var(--color-line);
+  .hero {
+    background: var(--color-night);
+    color: #ffffff;
+    overflow: hidden;
+    --color-focus: var(--color-honey);
   }
-  .brand {
-    font-size: 2.75rem;
-    font-weight: 800;
-    letter-spacing: -0.08em;
-    text-decoration: none;
-    line-height: 1;
-  }
-  .brand span {
-    font-size: var(--text-sm);
-    vertical-align: top;
-    margin-left: var(--space-xs);
-    color: var(--color-accent);
-  }
-  nav {
+  .hero-inner {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
     align-items: center;
-    gap: var(--space-xs) var(--space-sm);
+    gap: var(--space-xl);
+    padding-block: var(--space-xl) var(--space-2xl);
   }
-  nav a {
-    padding: var(--space-sm);
-    text-decoration: none;
+  .hero-text {
+    flex: 1 1 32rem;
+    min-width: 0;
   }
-  /* На узком телефоне пять ссылок не должны выталкивать страницу вбок. */
-  @media (max-width: 30rem) {
-    nav {
-      gap: 0;
-      font-size: var(--text-sm);
-    }
-    nav a {
-      padding: var(--space-xs);
-    }
-  }
-  nav a[aria-current] {
-    text-decoration: underline;
-    text-decoration-color: var(--color-accent);
-  }
-  .hero {
-    padding-block: var(--space-xl);
+  .label {
+    margin: 0 0 var(--space-md);
+    color: var(--color-honey);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
   h1 {
-    font-family: var(--font-display);
+    margin: 0;
+    max-width: 15ch;
     font-size: var(--text-title);
-    font-weight: 400;
-    line-height: 1.06;
+    line-height: 1.02;
     letter-spacing: -0.045em;
-    max-width: 17ch;
-    margin-block: var(--space-lg);
     text-wrap: balance;
   }
   .intro {
-    max-width: 42rem;
-    font-size: 1.2rem;
-    color: var(--color-muted);
+    max-width: 36rem;
+    margin: var(--space-lg) 0 0;
+    color: var(--color-night-text);
+    font-size: var(--text-lead);
   }
-  .notice {
-    display: inline-block;
-    max-width: 42rem;
-    margin-top: var(--space-lg);
-    padding: var(--space-sm) var(--space-md);
-    border-left: 2px solid var(--color-accent);
-    background: var(--color-surface);
-    font-size: var(--text-sm);
-  }
-  .categories {
-    padding-block: var(--space-lg) var(--space-xl);
-  }
-  h2 {
-    font-size: 1.35rem;
-    font-weight: 500;
-    margin-bottom: var(--space-lg);
-  }
-  .grid {
-    display: grid;
-    gap: var(--space-md);
-  }
-  article {
-    border-top: 1px solid var(--color-line);
-    padding-block: var(--space-lg);
-  }
-  article h3 {
-    font-size: 1.5rem;
-    font-weight: 500;
-    margin-block: var(--space-sm);
-  }
-  article p {
-    color: var(--color-muted);
-    max-width: 30ch;
-  }
-  footer {
+  .hero-actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-sm);
-    justify-content: space-between;
-    border-top: 1px solid var(--color-line);
-    padding-block: var(--space-lg);
+    margin-top: var(--space-lg);
+  }
+  .hero-actions .button {
+    padding-inline: 2rem;
+    min-height: 3.5rem;
+    font-size: 1.125rem;
+  }
+  .queries {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-xl);
+    color: var(--color-night-muted);
     font-size: var(--text-sm);
+  }
+  .queries ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .queries a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 1.1rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-night-raised);
+    color: #ffffff;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .queries a:hover {
+    background: #ffffff;
+    color: var(--color-ink);
+  }
+  .notice {
+    max-width: 36rem;
+    margin: var(--space-lg) 0 0;
+    padding-left: var(--space-md);
+    border-left: 3px solid var(--color-honey);
+    color: var(--color-night-muted);
+    font-size: var(--text-sm);
+  }
+  .art {
+    flex: 1 1 22rem;
+    max-width: min(100%, 32rem);
+    height: auto;
+    margin-inline: auto;
+  }
+  .block {
+    padding-top: var(--space-2xl);
+  }
+  .block-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--space-sm) var(--space-lg);
+  }
+  .block-head h2 {
+    margin: 0;
+    font-size: clamp(2rem, 3.4vw, 2.75rem);
+    letter-spacing: -0.035em;
+  }
+  .block-head p {
+    margin: 0;
+    color: var(--color-muted);
+  }
+  .block-head a {
+    font-weight: 700;
+  }
+  .categories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0 var(--space-xl);
+    margin: var(--space-lg) 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 2px solid var(--color-ink);
+  }
+  .categories li {
+    display: flex;
+  }
+  /* Ссылка тянется на всю высоту строки, чтобы нижние линии совпадали, даже если название в две строки. */
+  .categories a {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding-block: var(--space-md);
+    border-bottom: 1px solid var(--color-line);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .categories a:hover span {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+  .categories svg {
+    flex: none;
+  }
+  .products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
+  }
+  .find {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-lg) var(--space-xl);
+    padding: clamp(var(--space-lg), 5vw, var(--space-xl));
+    border-radius: var(--radius-lg);
+    background: var(--color-honey);
+  }
+  .find > div {
+    flex: 1 1 24rem;
+  }
+  .find h2 {
+    margin: 0;
+    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+  .find p {
+    max-width: 32rem;
+    margin: var(--space-md) 0 0;
+    font-size: var(--text-lead);
+  }
+  .find form {
+    flex: 1 1 22rem;
+    display: grid;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
+    background: var(--color-paper);
+  }
+  .find label {
+    margin: 0;
+  }
+  .find input {
+    width: 100%;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-lg) var(--space-xl);
+  }
+  .facts h2 {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .facts p {
+    margin: var(--space-sm) 0 0;
     color: var(--color-muted);
   }
   @media (min-width: 48rem) {
-    .hero {
-      padding-block: var(--space-2xl) var(--space-xl);
+    .hero-inner {
+      padding-block: var(--space-2xl);
     }
-    .grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-xl);
+    .products {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>
