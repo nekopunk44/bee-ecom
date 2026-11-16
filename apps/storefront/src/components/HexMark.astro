@@ -1,0 +1,15 @@
+---
+interface Props {
+  size?: number;
+}
+const { size = 30 } = Astro.props;
+---
+
+<svg
+  width={size}
+  height={Math.round((size * 34) / 30)}
+  viewBox="0 0 30 34"
+  aria-hidden="true"
+>
+  <polygon points="15,1 29,9 29,25 15,33 1,25 1,9" fill="#f5b700"></polygon>
+</svg>

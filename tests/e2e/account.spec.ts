@@ -45,5 +45,6 @@ test('customer can register, start an HttpOnly session and log out from storefro
   await page.getByRole('button', { name: 'Зарегистрироваться' }).click();
   await expect(page.getByText(customer.email)).toBeVisible();
   await page.getByRole('button', { name: 'Выйти' }).click();
-  await expect(page.locator('form')).toBeVisible();
+  // В шапке тоже есть форма (поиск по каталогу), поэтому ищем форму входа в основной части.
+  await expect(page.locator('main form')).toBeVisible();
 });

@@ -1,4 +1,5 @@
 ---
+import '@bee/ui/fonts.css';
 import '@bee/ui/tokens.css';
 import '@bee/ui/base.css';
 import { locales, type Locale } from '../i18n';
@@ -44,3 +45,14 @@ const allowIndex = process.env.ENABLE_INDEXING === 'true' && !noindex;
     <slot />
   </body>
 </html>
+<style is:global>
+  /* Подвал прижат к низу даже на короткой странице, например в пустой корзине. */
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  body > main {
+    flex: 1 0 auto;
+  }
+</style>

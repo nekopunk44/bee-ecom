@@ -1,0 +1,90 @@
+---
+import { messages, type Locale } from '../i18n';
+import { catalogText } from '../lib/catalog';
+import HexMark from './HexMark.astro';
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const suffix = Astro.url.pathname.replace(/^\/(ru|ro)/, '');
+const other = locale === 'ru' ? 'ro' : 'ru';
+const text = {
+  ru: {
+    nav: 'Нижнее меню',
+    cart: 'Корзина',
+    account: 'Аккаунт',
+    other: 'Română',
+    place: 'Bee, Молдова',
+  },
+  ro: {
+    nav: 'Meniu de subsol',
+    cart: 'Coș',
+    account: 'Cont',
+    other: 'Русский',
+    place: 'Bee, Moldova',
+  },
+}[locale];
+---
+
+<footer>
+  <div class="container inner">
+    <div class="brand">
+      <span class="logo">
+        <HexMark size={24} /> bee
+      </span>
+      <span>{messages[locale].footer}</span>
+    </div>
+    <nav aria-label={text.nav}>
+      <a href={`/${locale}/catalog/`}>{catalogText[locale].catalog}</a>
+      <a href={`/${locale}/cart/`}>{text.cart}</a>
+      <a href={`/${locale}/account/`}>{text.account}</a>
+      <a href={`/${other}${suffix}`} lang={other}>
+        {text.other}
+      </a>
+    </nav>
+    <span>{text.place}</span>
+  </div>
+</footer>
+
+<style>
+  footer {
+    margin-top: var(--space-2xl);
+    background: var(--color-night);
+    color: var(--color-night-muted);
+    font-size: var(--text-sm);
+    --color-focus: var(--color-honey);
+  }
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-lg);
+    padding-block: var(--space-xl);
+  }
+  .brand {
+    display: grid;
+    gap: var(--space-xs);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs) var(--space-lg);
+  }
+  nav a {
+    padding-block: var(--space-xs);
+  }
+  nav a:hover {
+    color: #ffffff;
+  }
+</style>
