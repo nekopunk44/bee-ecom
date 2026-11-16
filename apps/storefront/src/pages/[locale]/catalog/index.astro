@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import StoreHeader from '../../../components/StoreHeader.astro';
+import StoreFooter from '../../../components/StoreFooter.astro';
 import ProductCard from '../../../components/ProductCard.astro';
 import { isLocale } from '../../../i18n';
 import { catalogApi, catalogText } from '../../../lib/catalog';
@@ -58,6 +59,11 @@ const pageLink = (value: number) => {
   query.set('page', String(value));
   return `?${query}`;
 };
+const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 12));
+// На телефоне фильтры свёрнуты, но раскрываются сами, если покупатель уже что-то выбрал.
+const refined =
+  ['category', 'brand', 'min', 'max'].some((key) => params.get(key)) ||
+  sort !== 'newest';
 ---
 
 <Layout
@@ -68,171 +74,296 @@ const pageLink = (value: number) => {
 >
   <StoreHeader locale={locale} />
   <main id="main" class="container">
-    <p class="eyebrow">Bee / {t.catalog}</p>
-    <h1>{t.title}</h1>
-    <form class="filters" method="get" role="search">
-      <label class="search">
-        {t.search}
-        <input
-          name="q"
-          value={params.get('q') ?? ''}
-          maxlength="200"
-          placeholder={t.query}
-        />
-      </label>
-      <label>
-        {t.category}
-        <select name="category">
-          <option value="">{t.all}</option>
-          {metadata?.categories.map((c) => (
-            <option value={c.id} selected={params.get('category') === c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        {t.brand}
-        <select name="brand">
-          <option value="">{t.all}</option>
-          {metadata?.brands.map((b) => (
-            <option value={b.id} selected={params.get('brand') === b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        {t.min}
-        <input
-          name="min"
-          type="number"
-          min="0"
-          max="1000000"
-          step="0.01"
-          value={params.get('min') ?? ''}
-        />
-      </label>
-      <label>
-        {t.max}
-        <input
-          name="max"
-          type="number"
-          min="0"
-          max="1000000"
-          step="0.01"
-          value={params.get('max') ?? ''}
-        />
-      </label>
-      <label>
-        {t.sort}
-        <select name="sort">
-          {sortValues.map((s) => (
-            <option value={s} selected={s === sort}>
-              {t[s]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button class="button" type="submit">
-        {t.apply}
-      </button>
-      <a href={`/${locale}/catalog/`}>{t.clear}</a>
-    </form>
-    {failed ? (
-      <div class="state" role="status">
-        {t.unavailable}
+    <div class="heading">
+      <div>
+        <p class="eyebrow">{t.catalog}</p>
+        <h1 class="display">{t.title}</h1>
       </div>
-    ) : (
-      <>
-        <p>
-          {t.found}: {data?.total}
+      {!failed && (
+        <p class="found">
+          {t.found}: <strong>{data?.total}</strong>
         </p>
-        {data?.items.length ? (
-          <div class="products">
-            {data.items.map((product) => (
-              <ProductCard product={product} locale={locale} />
-            ))}
+      )}
+    </div>
+    <div class="layout">
+      <form class="filters" method="get" role="search">
+        <label class="search">
+          {t.search}
+          <input
+            name="q"
+            value={params.get('q') ?? ''}
+            maxlength="200"
+            placeholder={t.query}
+          />
+        </label>
+        <details class="more" open={refined}>
+          <summary>{t.refine}</summary>
+          <div class="fields">
+            <label>
+              {t.category}
+              <select name="category">
+                <option value="">{t.all}</option>
+                {metadata?.categories.map((c) => (
+                  <option
+                    value={c.id}
+                    selected={params.get('category') === c.id}
+                  >
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t.brand}
+              <select name="brand">
+                <option value="">{t.all}</option>
+                {metadata?.brands.map((b) => (
+                  <option value={b.id} selected={params.get('brand') === b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t.min}
+              <input
+                name="min"
+                type="number"
+                min="0"
+                max="1000000"
+                step="0.01"
+                value={params.get('min') ?? ''}
+              />
+            </label>
+            <label>
+              {t.max}
+              <input
+                name="max"
+                type="number"
+                min="0"
+                max="1000000"
+                step="0.01"
+                value={params.get('max') ?? ''}
+              />
+            </label>
+            <label class="sort">
+              {t.sort}
+              <select name="sort">
+                {sortValues.map((s) => (
+                  <option value={s} selected={s === sort}>
+                    {t[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </details>
+        <div class="actions">
+          <button class="button" type="submit">
+            {t.apply}
+          </button>
+          <a href={`/${locale}/catalog/`}>{t.clear}</a>
+        </div>
+      </form>
+      <div class="results">
+        {failed ? (
+          <div class="state" role="status">
+            {t.unavailable}
           </div>
         ) : (
-          <div class="state">{t.empty}</div>
+          <>
+            {data?.items.length ? (
+              <div class="products">
+                {data.items.map((product) => (
+                  <ProductCard product={product} locale={locale} />
+                ))}
+              </div>
+            ) : (
+              <div class="state">
+                <p>{t.empty}</p>
+                <a class="button ghost" href={`/${locale}/catalog/`}>
+                  {t.clear}
+                </a>
+              </div>
+            )}
+            {pages > 1 && (
+              <nav class="pagination" aria-label={t.catalog}>
+                {page > 1 && <a href={pageLink(page - 1)}>{t.previous}</a>}
+                <span>
+                  {page} / {pages}
+                </span>
+                {page < pages && <a href={pageLink(page + 1)}>{t.next}</a>}
+              </nav>
+            )}
+          </>
         )}
-        <nav class="pagination" aria-label={t.catalog}>
-          {page > 1 && <a href={pageLink(page - 1)}>{t.previous}</a>}
-          <span>
-            {page} / {Math.max(1, Math.ceil((data?.total ?? 0) / 12))}
-          </span>
-          {page * 12 < (data?.total ?? 0) && (
-            <a href={pageLink(page + 1)}>{t.next}</a>
-          )}
-        </nav>
-      </>
-    )}
+      </div>
+    </div>
   </main>
+  <StoreFooter locale={locale} />
 </Layout>
 <style>
   main {
-    padding-block: var(--space-xl);
+    padding-top: var(--space-xl);
+  }
+  .heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: var(--space-sm) var(--space-lg);
+  }
+  .eyebrow {
+    margin: 0 0 var(--space-sm);
   }
   h1 {
-    font-family: var(--font-display);
-    font-weight: 400;
-    font-size: clamp(2rem, 4vw, 3.8rem);
-    line-height: 1.15;
-    max-width: 22ch;
+    margin: 0;
+    max-width: 20ch;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+  .found {
+    margin: 0;
+    color: var(--color-muted);
+  }
+  .found strong {
+    color: var(--color-ink);
+  }
+  .layout {
+    display: grid;
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
   }
   .filters {
     display: grid;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    border: 1px solid var(--color-line);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-md);
+    align-content: start;
+    padding: var(--space-md) var(--space-lg) var(--space-lg);
     border-radius: var(--radius-md);
-    margin-block: var(--space-lg);
+    background: var(--color-sand);
   }
-  label {
-    display: grid;
-    gap: var(--space-xs);
+  .filters label {
     font-size: var(--text-sm);
   }
-  input,
-  select {
-    min-width: 0;
+  .filters input,
+  .filters select {
     width: 100%;
-    padding: var(--space-sm);
-    border: 1px solid var(--color-line);
-    background: var(--color-surface);
-    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+  }
+  .search,
+  .more,
+  .sort,
+  .actions {
+    grid-column: 1 / -1;
+  }
+  .more summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    width: fit-content;
+    min-height: 2.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+  .more summary::-webkit-details-marker {
+    display: none;
+  }
+  .more summary::after {
+    content: '+';
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-paper);
+    font-weight: 600;
+    line-height: 1;
+  }
+  .more[open] summary::after {
+    content: '−';
+  }
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-md);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+    margin-top: var(--space-sm);
+    font-weight: 600;
   }
   .products {
     display: grid;
-    gap: var(--space-lg);
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-lg) var(--space-md);
+  }
+  @media (min-width: 48rem) {
+    .products {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-xl) var(--space-lg);
+    }
   }
   .state {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-md);
     padding: var(--space-xl);
-    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    background: var(--color-honey-soft);
+    font-weight: 600;
+  }
+  .state p {
+    margin: 0;
   }
   .pagination {
     display: flex;
-    gap: var(--space-lg);
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
+    gap: var(--space-md);
     margin-top: var(--space-xl);
+    font-weight: 600;
   }
-  @media (min-width: 48rem) {
+  .pagination a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 1.25rem;
+    border: 2px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    text-decoration: none;
+  }
+  .pagination a:hover {
+    border-color: var(--color-ink);
+  }
+  @media (min-width: 64rem) {
+    .layout {
+      grid-template-columns: 19rem minmax(0, 1fr);
+      align-items: start;
+      gap: var(--space-xl);
+    }
     .filters {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      align-items: end;
-    }
-    .search {
-      grid-column: span 2;
-    }
-    .products {
-      grid-template-columns: repeat(2, 1fr);
+      position: sticky;
+      top: var(--space-md);
     }
   }
-  @media (min-width: 75rem) {
-    .products {
-      grid-template-columns: repeat(3, 1fr);
+  /* На широком экране боковая панель всегда раскрыта. Где ::details-content не поддерживается,
+     остаётся обычный переключатель — фильтры не теряются. */
+  @supports selector(::details-content) {
+    @media (min-width: 64rem) {
+      .more summary {
+        display: none;
+      }
+      .more::details-content {
+        content-visibility: visible;
+      }
     }
   }
 </style>
