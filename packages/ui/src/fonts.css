@@ -1,0 +1,4 @@
+/* Шрифты лежат вместе с сайтом: политика безопасности (CSP) разрешает загрузку только со своего домена.
+   Onest набирает текст, Unbounded — заголовки и цены. Оба с кириллицей и румынскими ș, ț. Лицензия SIL OFL 1.1. */
+@import '@fontsource-variable/onest/index.css';
+@import '@fontsource-variable/unbounded/index.css';
