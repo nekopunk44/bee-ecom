@@ -325,7 +325,9 @@ execFileSync(
     'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"',
   ],
   {
-    input: `DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE email IN ('${credentials.email}','${customer.email}'));\nDELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email IN ('${credentials.email}','${customer.email}'));\nDELETE FROM users WHERE email IN ('${credentials.email}','${customer.email}');\n`,
+    // Отзываем роли, но сессию и пользователя оставляем: следующие запросы должны получить 403 по живой
+    // сессии. Удалить пользователя всё равно нельзя — на него ссылаются загруженные им медиа.
+    input: `DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE email IN ('${credentials.email}','${customer.email}'));\n`,
     stdio: ['pipe', 'pipe', 'pipe'],
   },
 );
