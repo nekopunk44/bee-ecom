@@ -8,7 +8,9 @@
   const api = createApiClient();
   const copy = {
     ru: {
-      title: 'Корзина',
+      items: 'Товары в корзине',
+      positions: { one: 'товар', few: 'товара', many: 'товаров' },
+      pieces: { one: 'штука', few: 'штуки', many: 'штук' },
       sku: 'артикул',
       loading: 'Загружаем корзину…',
       signIn: 'Войдите в аккаунт, чтобы посмотреть свою корзину.',
@@ -21,11 +23,16 @@
       increase: 'Увеличить количество',
       subtotal: 'Промежуточный итог',
       prices: 'Цены и наличие будут подтверждены при оформлении заказа.',
+      soon: 'Оформление заказа и доставка скоро появятся. Корзина сохранится в аккаунте.',
+      browse: 'Перейти в каталог',
+      more: 'Продолжить покупки',
       retry: 'Повторить',
       failed: 'Не удалось загрузить корзину. Попробуйте ещё раз.',
     },
     ro: {
-      title: 'Coș',
+      items: 'Produse în coș',
+      positions: { one: 'produs', few: 'produse', many: 'de produse' },
+      pieces: { one: 'bucată', few: 'bucăți', many: 'de bucăți' },
       sku: 'cod',
       loading: 'Se încarcă coșul…',
       signIn: 'Autentifică-te pentru a vedea coșul tău.',
@@ -39,6 +46,9 @@
       subtotal: 'Subtotal',
       prices:
         'Prețul și disponibilitatea vor fi confirmate la plasarea comenzii.',
+      soon: 'Plasarea comenzii și livrarea vor fi disponibile în curând. Coșul rămâne salvat în cont.',
+      browse: 'Deschide catalogul',
+      more: 'Continuă cumpărăturile',
       retry: 'Reîncearcă',
       failed: 'Coșul nu a putut fi încărcat. Încearcă din nou.',
     },
@@ -54,11 +64,23 @@
       0,
     ),
   );
+  let pieces = $derived(
+    (cart?.items ?? []).reduce((sum, item) => sum + item.quantity, 0),
+  );
   const formatMoney = (minor: number) =>
     new Intl.NumberFormat(locale === 'ro' ? 'ro-MD' : 'ru-MD', {
       style: 'currency',
       currency: 'MDL',
     }).format(minor / 100);
+  const plural = new Intl.PluralRules(locale);
+  // «2 товара, 3 штуки»: в русском и румынском у слова три формы, «other» берёт последнюю.
+  const count = (
+    value: number,
+    forms: { one: string; few: string; many: string },
+  ) => {
+    const form = plural.select(value);
+    return `${value} ${form === 'one' ? forms.one : form === 'few' ? forms.few : forms.many}`;
+  };
 
   async function load() {
     loading = true;
@@ -121,97 +143,276 @@
   });
 </script>
 
-<section aria-labelledby="cart-heading" class="cart">
-  <h1 id="cart-heading">{copy.title}</h1>
-  {#if loading}<p aria-live="polite">{copy.loading}</p>
+{#snippet hex(size: number)}
+  <svg
+    width={size}
+    height={Math.round((size * 34) / 30)}
+    viewBox="0 0 30 34"
+    aria-hidden="true"
+    ><polygon points="15,1 29,9 29,25 15,33 1,25 1,9" fill="#f5b700"
+    ></polygon></svg
+  >
+{/snippet}
+
+<div class="cart">
+  {#if loading}<p class="state" aria-live="polite">{copy.loading}</p>
   {:else if authRequired}
-    <p>{copy.signIn}</p>
-    <a class="button" href={`/${locale}/account/`}>{copy.account}</a>
+    <div class="state">
+      <p>{copy.signIn}</p>
+      <a class="button" href={`/${locale}/account/`}>{copy.account}</a>
+    </div>
   {:else if error}
-    <p role="alert">{error}</p>
-    <button class="button" onclick={load}>{copy.retry}</button>
-  {:else if !cart?.items.length}<p>{copy.empty}</p>
+    <div class="state">
+      <p role="alert">{error}</p>
+      <button class="button" onclick={load}>{copy.retry}</button>
+    </div>
+  {:else if !cart?.items.length}
+    <div class="state">
+      <p>{copy.empty}</p>
+      <a class="button honey" href={`/${locale}/catalog/`}>{copy.browse}</a>
+    </div>
   {:else}
-    <ul>
-      {#each cart.items as item (item.variantId)}
-        <li>
-          <div>
-            <a href={`/${locale}/catalog/${item.productSlug}/`}>{item.name}</a>
-            <p>{item.variantName}, {copy.sku} {item.sku}</p>
-            <div class="quantity" aria-label={`${item.name}: ${item.quantity}`}>
-              <button
-                aria-label={copy.decrease}
-                onclick={() => setQuantity(item, item.quantity - 1)}
-                disabled={busyVariant === item.variantId}>−</button
-              >
-              <span aria-live="polite">{item.quantity}</span>
-              <button
-                aria-label={copy.increase}
-                onclick={() => setQuantity(item, item.quantity + 1)}
-                disabled={busyVariant === item.variantId ||
-                  item.quantity >= 100}>+</button
-              >
-              <strong
-                >{formatMoney(item.unitPriceMinor)} × {item.quantity}</strong
-              >
-            </div>
-            <p>
-              {item.available < 1
-                ? copy.unavailable
-                : `${copy.available}: ${item.available}`}
-            </p>
-          </div>
-          <button
-            class="remove"
-            onclick={() => remove(item)}
-            disabled={busyVariant === item.variantId}>{copy.remove}</button
-          >
-        </li>
-      {/each}
-    </ul>
-    <p class="subtotal">
-      <strong>{copy.subtotal}: {formatMoney(subtotal)}</strong>
-    </p>
-    <p>{copy.prices}</p>
+    <div class="layout">
+      <section aria-label={copy.items}>
+        <p class="count">
+          {count(cart.items.length, copy.positions)}, {count(
+            pieces,
+            copy.pieces,
+          )}
+        </p>
+        <ul>
+          {#each cart.items as item (item.variantId)}
+            <li>
+              <span class="thumb">{@render hex(34)}</span>
+              <div class="info">
+                <a class="name" href={`/${locale}/catalog/${item.productSlug}/`}
+                  >{item.name}</a
+                >
+                <p class="meta">{item.variantName}, {copy.sku} {item.sku}</p>
+                <p class:warning={item.available < 1} class="meta">
+                  {item.available < 1
+                    ? copy.unavailable
+                    : `${copy.available}: ${item.available}`}
+                </p>
+                <div class="row">
+                  <div
+                    class="stepper"
+                    role="group"
+                    aria-label={`${item.name}: ${item.quantity}`}
+                  >
+                    <button
+                      aria-label={copy.decrease}
+                      onclick={() => setQuantity(item, item.quantity - 1)}
+                      disabled={busyVariant === item.variantId}>−</button
+                    >
+                    <span aria-live="polite">{item.quantity}</span>
+                    <button
+                      aria-label={copy.increase}
+                      onclick={() => setQuantity(item, item.quantity + 1)}
+                      disabled={busyVariant === item.variantId ||
+                        item.quantity >= 100}>+</button
+                    >
+                  </div>
+                  <button
+                    class="remove"
+                    onclick={() => remove(item)}
+                    disabled={busyVariant === item.variantId}
+                    >{copy.remove}</button
+                  >
+                  <div class="price">
+                    <strong
+                      >{formatMoney(
+                        item.unitPriceMinor * item.quantity,
+                      )}</strong
+                    >
+                    {#if item.quantity > 1}<span
+                        >{formatMoney(item.unitPriceMinor)} × {item.quantity}</span
+                      >{/if}
+                  </div>
+                </div>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </section>
+      <aside class="summary">
+        <p class="total">
+          <span>{copy.subtotal}</span>
+          <strong>{formatMoney(subtotal)}</strong>
+        </p>
+        <p class="note">{copy.prices}</p>
+        <p class="soon">{@render hex(20)}<span>{copy.soon}</span></p>
+        <a class="button ghost" href={`/${locale}/catalog/`}>{copy.more}</a>
+      </aside>
+    </div>
   {/if}
-</section>
+</div>
 
 <style>
   .cart {
-    max-width: 56rem;
-    margin: var(--space-xl) auto;
+    padding-top: var(--space-lg);
   }
-  h1 {
-    font-family: var(--font-display);
-    font-size: clamp(2rem, 4vw, 3.5rem);
-    font-weight: 400;
+  .state {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-md);
+    max-width: 40rem;
+    margin: 0;
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
+    background: var(--color-sand);
+    font-weight: 600;
+  }
+  .state p {
+    margin: 0;
+  }
+  .layout {
+    display: grid;
+    gap: var(--space-xl);
+  }
+  .count {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 600;
   }
   ul {
+    margin: var(--space-sm) 0 0;
     padding: 0;
     list-style: none;
   }
   li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
     gap: var(--space-md);
     padding-block: var(--space-md);
     border-bottom: 1px solid var(--color-line);
   }
-  li p {
-    margin: var(--space-xs) 0;
+  .thumb {
+    display: grid;
+    place-items: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-honey-soft);
   }
-  .quantity {
+  .name {
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .name:hover {
+    text-decoration: underline;
+  }
+  .meta {
+    margin: 0.15rem 0 0;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .meta.warning {
+    color: var(--color-danger);
+    font-weight: 600;
+  }
+  .row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-sm);
-    margin-block: var(--space-sm);
+    margin-top: var(--space-sm);
+  }
+  .stepper {
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-pill);
+    background: var(--color-sand);
+  }
+  .stepper button {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+  .stepper span {
+    min-width: 1.5rem;
+    text-align: center;
+    font-weight: 700;
+  }
+  .price {
+    display: grid;
+    justify-items: end;
+    margin-left: auto;
+  }
+  .price strong {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+  }
+  .price span {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
   }
   .remove {
+    padding: var(--space-xs) var(--space-sm);
+    border: 0;
+    background: transparent;
     color: var(--color-danger);
+    font-size: var(--text-sm);
   }
-  .subtotal {
-    text-align: right;
-    font-size: 1.25rem;
+  .remove:hover {
+    text-decoration: underline;
+  }
+  .summary {
+    display: grid;
+    gap: var(--space-md);
+    align-content: start;
+    padding-top: var(--space-md);
+    border-top: 2px solid var(--color-ink);
+  }
+  .summary p {
+    margin: 0;
+  }
+  .total {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-sm);
+  }
+  .total span {
+    color: var(--color-muted);
+  }
+  .total strong {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    letter-spacing: -0.03em;
+  }
+  .note {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .soon {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--color-honey-soft);
+    font-size: var(--text-sm);
+  }
+  .soon :global(svg) {
+    flex: none;
+    margin-top: 0.1rem;
+  }
+  @media (min-width: 64rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) 22rem;
+      align-items: start;
+    }
+    .summary {
+      position: sticky;
+      top: var(--space-md);
+    }
   }
 </style>

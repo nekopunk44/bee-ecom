@@ -1,0 +1,34 @@
+---
+interface Props {
+  title: string;
+  text?: string;
+}
+const { title, text } = Astro.props;
+---
+
+<div class="top">
+  <div class="container">
+    <h1 class="display">{title}</h1>
+    {text && <p>{text}</p>}
+  </div>
+</div>
+
+<style>
+  /* Тёмная полоса под шапкой: продолжает её и закругляется снизу, как в макете корзины. */
+  .top {
+    padding-block: var(--space-md) var(--space-xl);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    background: var(--color-night);
+    color: #ffffff;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(2.25rem, 4.4vw, 3.5rem);
+    letter-spacing: -0.04em;
+  }
+  p {
+    max-width: 40rem;
+    margin: var(--space-sm) 0 0;
+    color: var(--color-night-text);
+  }
+</style>

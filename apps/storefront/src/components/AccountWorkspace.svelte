@@ -16,6 +16,7 @@
         submitRegister: 'Зарегистрироваться',
         signedIn: 'Вы вошли как',
         logout: 'Выйти',
+        cart: 'Открыть корзину',
         account: 'Аккаунт покупателя',
         welcome: 'После входа здесь будут ваши заказы и данные профиля.',
         unavailable: 'Этот адрес уже зарегистрирован.',
@@ -32,6 +33,7 @@
         submitRegister: 'Înregistrează-te',
         signedIn: 'Autentificat ca',
         logout: 'Ieșire',
+        cart: 'Deschide coșul',
         account: 'Cont client',
         welcome:
           'După autentificare, aici vor apărea comenzile și datele profilului.',
@@ -120,17 +122,19 @@
   }
 </script>
 
-<section class="account" aria-labelledby="account-heading">
-  <h1 id="account-heading">{copy.account}</h1>
+<section class="account" aria-label={copy.account}>
   {#if error}<p role="alert">{error}</p>{/if}
   {#if session}
-    <p>{copy.signedIn} <strong>{session.email}</strong>.</p>
+    <p class="who">{copy.signedIn} <strong>{session.email}</strong>.</p>
     <p>{copy.welcome}</p>
-    <button class="button" onclick={logout} disabled={busy}
-      >{copy.logout}</button
-    >
+    <div class="links">
+      <a class="button honey" href={`/${locale}/cart/`}>{copy.cart}</a>
+      <button class="button ghost" onclick={logout} disabled={busy}
+        >{copy.logout}</button
+      >
+    </div>
   {:else}
-    <div class="tabs" aria-label={copy.account}>
+    <div class="tabs" role="group" aria-label={copy.account}>
       <button aria-pressed={mode === 'login'} onclick={() => (mode = 'login')}
         >{copy.login}</button
       ><button
@@ -169,43 +173,56 @@
 
 <style>
   .account {
-    max-width: 34rem;
-    margin: var(--space-xl) auto;
+    max-width: 32rem;
+    margin-top: var(--space-lg);
     padding: var(--space-lg);
-    border: 1px solid var(--color-line);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
+    border: 2px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    background: var(--color-paper);
   }
-  h1 {
-    font-family: var(--font-display);
-    font-weight: 400;
+  .account > p {
+    margin: 0 0 var(--space-sm);
   }
-  .tabs,
-  form {
-    display: grid;
-    gap: var(--space-md);
+  .who {
+    font-size: var(--text-lead);
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
   }
   .tabs {
+    display: grid;
     grid-template-columns: 1fr 1fr;
-    margin-block: var(--space-lg);
+    gap: 0.25rem;
+    margin-bottom: var(--space-md);
+    padding: 0.3rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-sand);
+  }
+  .tabs button {
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
+    border: 0;
+    background: transparent;
   }
   .tabs button[aria-pressed='true'] {
-    background: var(--color-forest);
-    color: var(--color-surface);
+    background: var(--color-ink);
+    color: #ffffff;
   }
-  label {
+  form {
     display: grid;
     gap: var(--space-xs);
   }
   input {
-    min-height: 2.75rem;
-    padding: var(--space-sm);
-    border: 1px solid var(--color-line);
-    border-radius: var(--radius-sm);
-    background: white;
-    color: var(--color-ink);
+    width: 100%;
+  }
+  form .button {
+    margin-top: var(--space-sm);
   }
   [role='alert'] {
     color: var(--color-danger);
+    font-weight: 600;
   }
 </style>

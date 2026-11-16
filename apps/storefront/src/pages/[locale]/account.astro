@@ -2,19 +2,31 @@
 import Layout from '../../layouts/Layout.astro';
 import AccountWorkspace from '../../components/AccountWorkspace.svelte';
 import StoreHeader from '../../components/StoreHeader.astro';
+import StoreFooter from '../../components/StoreFooter.astro';
+import PageTop from '../../components/PageTop.astro';
 import { isLocale } from '../../i18n';
 
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return Astro.redirect('/404');
-const title = locale === 'ru' ? 'Аккаунт покупателя' : 'Cont client';
+const text = {
+  ru: {
+    title: 'Аккаунт покупателя',
+    note: 'Войдите, чтобы откладывать товары в корзину. Позже здесь появятся заказы.',
+  },
+  ro: {
+    title: 'Cont client',
+    note: 'Autentifică-te ca să pui produse în coș. Mai târziu aici vor apărea comenzile.',
+  },
+}[locale];
 ---
 
-<Layout locale={locale} title={title} description={title} noindex>
-  <a class="skip-link" href="#main">
-    {locale === 'ru' ? 'Перейти к содержимому' : 'Salt la conținut'}
-  </a>
+<Layout locale={locale} title={text.title} description={text.title} noindex>
   <StoreHeader locale={locale} />
-  <main id="main" class="container">
-    <AccountWorkspace client:load locale={locale} />
+  <main id="main">
+    <PageTop title={text.title} text={text.note} />
+    <div class="container">
+      <AccountWorkspace client:load locale={locale} />
+    </div>
   </main>
+  <StoreFooter locale={locale} />
 </Layout>
