@@ -278,9 +278,14 @@
   .login {
     max-width: 30rem;
     padding: var(--space-lg);
-    border: 1px solid var(--color-line);
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
+    border: 2px solid var(--color-line);
+    background: var(--color-paper);
+    border-radius: var(--radius-lg);
+  }
+  .login h2 {
+    margin-top: 0;
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
   }
   .toolbar,
   .search,
@@ -292,14 +297,34 @@
     align-items: center;
     justify-content: space-between;
   }
+  .search {
+    align-items: end;
+    justify-content: flex-start;
+    gap: var(--space-sm);
+  }
+  .search label {
+    margin: 0;
+  }
+  .search button {
+    min-height: 3.25rem;
+  }
   .tabs {
     justify-content: flex-start;
-    border-bottom: 1px solid var(--color-line);
-    padding-bottom: var(--space-md);
+    gap: 0.25rem;
+    width: fit-content;
+    max-width: 100%;
+    margin-block: var(--space-md);
+    padding: 0.3rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-sand);
+  }
+  .tabs button {
+    border: 0;
+    background: transparent;
   }
   .tabs button[aria-current] {
-    background: var(--color-forest);
-    color: var(--color-surface);
+    background: var(--color-ink);
+    color: #ffffff;
   }
   .table-wrap {
     overflow: auto;
@@ -310,6 +335,14 @@
     border-collapse: collapse;
     text-align: left;
   }
+  thead tr {
+    border-bottom: 2px solid var(--color-ink);
+  }
+  th {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
   th,
   td {
     padding: var(--space-sm);
@@ -318,6 +351,10 @@
   caption {
     text-align: left;
     padding-block: var(--space-md);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   .pagination {
     justify-content: center;

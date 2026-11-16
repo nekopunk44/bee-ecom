@@ -30,14 +30,19 @@
 </script>
 
 <a class="skip-link" href="#main">Перейти к содержимому</a>
-<header class="container">
-  <strong>bee<span> / управление</span></strong><span class="eyebrow"
-    >Каталог</span
-  >
+<header>
+  <div class="container bar">
+    <strong class="brand"
+      ><svg width="26" height="29" viewBox="0 0 30 34" aria-hidden="true"
+        ><polygon points="15,1 29,9 29,25 15,33 1,25 1,9" fill="#f5b700"
+        ></polygon></svg
+      >bee<span>управление</span></strong
+    ><span class="section">Каталог</span>
+  </div>
 </header>
 <main id="main" class="container">
   <p class="eyebrow">Управление магазином</p>
-  <h1>Рабочее пространство Bee</h1>
+  <h1 class="display">Рабочее пространство Bee</h1>
   <p class="intro">Товары, переводы, варианты и изображения вашего магазина.</p>
   <CatalogWorkspace />
   <details>
@@ -55,42 +60,71 @@
 
 <style>
   header {
+    background: var(--color-night);
+    color: #ffffff;
+  }
+  .bar {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-md);
+    gap: var(--space-sm) var(--space-md);
     justify-content: space-between;
     align-items: center;
-    padding-block: var(--space-lg);
-    border-bottom: 1px solid var(--color-line);
+    padding-block: var(--space-md);
   }
-  header strong {
-    font-size: 1.75rem;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 1;
   }
-  header strong span {
+  .brand span {
+    margin-left: 0.35rem;
+    font-family: var(--font-body);
     font-size: var(--text-body);
-    font-weight: 400;
-    color: var(--color-muted);
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--color-night-muted);
+  }
+  .section {
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-honey);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-weight: 700;
   }
   main {
     padding-block: var(--space-xl);
   }
+  .eyebrow {
+    margin: 0;
+  }
   h1 {
-    font-family: var(--font-display);
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    font-weight: 400;
-    line-height: 1.15;
+    margin: var(--space-sm) 0 var(--space-sm);
+    font-size: clamp(2rem, 4.4vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
   }
   .intro {
     max-width: 45rem;
+    margin: 0;
     color: var(--color-muted);
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 600;
   }
   section {
     max-width: 48rem;
-    margin-block: var(--space-xl);
+    margin-block: var(--space-md) var(--space-xl);
     padding: var(--space-lg);
-    border: 1px solid var(--color-line);
+    border: 2px solid var(--color-line);
     border-radius: var(--radius-md);
-    background: var(--color-surface);
+    background: var(--color-paper);
   }
   h2 {
     margin-top: 0;
