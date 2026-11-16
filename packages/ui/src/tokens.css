@@ -1,29 +1,44 @@
+/* Оформление «Соты»: графит и мёд, крупный гротеск Unbounded в заголовках и ценах, Onest в тексте. */
 :root {
   color-scheme: light;
-  --color-paper: #f6f4ee;
-  --color-surface: #fffef9;
-  --color-ink: #272e28;
-  --color-muted: #60685e;
-  --color-line: #d7dace;
-  --color-accent: #b86b21;
-  --color-forest: #324a3b;
-  --color-danger: #a32a2a;
-  --font-body: 'Segoe UI', system-ui, sans-serif;
-  --font-display: Georgia, 'Times New Roman', serif;
+  --color-paper: #ffffff;
+  --color-surface: #ffffff;
+  --color-sand: #f4f1e8;
+  --color-ink: #17150f;
+  --color-muted: #5e5848;
+  --color-line: #e9e3d3;
+  --color-honey: #f5b700;
+  --color-honey-soft: #fff2c7;
+  /* Тёмные полосы: шапка, первый экран, подвал. */
+  --color-night: #17150f;
+  --color-night-raised: #2a2720;
+  --color-night-text: #d9d2c0;
+  --color-night-muted: #bdb5a0;
+  --color-night-line: #4a4535;
+  /* Мёд на белом не читается, поэтому рамка фокуса графитовая; на тёмном — медовая. */
+  --color-accent: #17150f;
+  --color-focus: #17150f;
+  --color-danger: #b42318;
+  --color-success: #1f5f8b;
+  --font-body: 'Onest Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display:
+    'Unbounded Variable', 'Onest Variable', 'Segoe UI', sans-serif;
   --space-xs: 0.375rem;
   --space-sm: 0.75rem;
   --space-md: 1.25rem;
   --space-lg: 2rem;
   --space-xl: 3.5rem;
   --space-2xl: 6rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1.5rem;
-  --shadow-soft: 0 0.5rem 2rem rgb(39 46 40 / 6%);
-  --text-sm: 0.875rem;
-  --text-body: 1rem;
-  --text-title: clamp(2.6rem, 6vw, 5.5rem);
-  --content-width: 76rem;
+  --radius-sm: 0.875rem;
+  --radius-md: 1.5rem;
+  --radius-lg: 2.25rem;
+  --radius-pill: 999px;
+  --shadow-soft: 0 0.5rem 2rem rgb(23 21 15 / 8%);
+  --text-sm: 0.9375rem;
+  --text-body: 1.0625rem;
+  --text-lead: 1.25rem;
+  --text-title: clamp(2.25rem, 5.4vw, 4.75rem);
+  --content-width: 80rem;
   --motion-fast: 150ms;
   --motion-normal: 280ms;
   --motion-slow: 650ms;
