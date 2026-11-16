@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import StoreHeader from '../components/StoreHeader.astro';
+import StoreFooter from '../components/StoreFooter.astro';
 Astro.response.status = 404;
 ---
 
@@ -8,9 +10,48 @@ Astro.response.status = 404;
   title="Страница не найдена — Bee"
   description="Страница не найдена."
 >
-  <main class="container">
-    <p class="eyebrow">404</p>
-    <h1>Страница не найдена</h1>
-    <a href="/ru/">На главную / Pagina principală</a>
+  <StoreHeader locale="ru" />
+  <main id="main" class="container">
+    <p class="code display" aria-hidden="true">
+      404
+    </p>
+    <h1 class="display">Страница не найдена</h1>
+    <p>Ссылка устарела или в адресе опечатка.</p>
+    <p lang="ro">Pagina nu există sau adresa conține o greșeală.</p>
+    <div class="links">
+      <a class="button honey" href="/ru/">
+        На главную
+      </a>
+      <a class="button ghost" href="/ro/" lang="ro">
+        Pagina principală
+      </a>
+    </div>
   </main>
+  <StoreFooter locale="ru" />
 </Layout>
+<style>
+  main {
+    padding-top: var(--space-xl);
+  }
+  .code {
+    margin: 0;
+    color: var(--color-honey);
+    font-size: clamp(4rem, 12vw, 8rem);
+    line-height: 1;
+  }
+  h1 {
+    margin: var(--space-sm) 0 var(--space-md);
+    font-size: clamp(2rem, 4vw, 3rem);
+    letter-spacing: -0.04em;
+  }
+  p {
+    margin: 0 0 var(--space-xs);
+    color: var(--color-muted);
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+  }
+</style>
