@@ -68,12 +68,14 @@
 </script>
 
 <div class="cart-action">
-  <button class="button" onclick={add} disabled={busy}
+  <button class="button honey" onclick={add} disabled={busy}
     >{done ? copy.added : copy.add}</button
   >
-  {#if done}<a href={`/${locale}/cart/`}>{copy.cart}</a>{/if}
+  {#if done}<a class="button ghost" href={`/${locale}/cart/`}>{copy.cart}</a
+    >{/if}
   {#if error}<p role="alert">{error}</p>{/if}
-  {#if needsLogin}<a href={`/${locale}/account/`}>{copy.signIn}</a>{/if}
+  {#if needsLogin}<a class="login" href={`/${locale}/account/`}>{copy.signIn}</a
+    >{/if}
 </div>
 
 <style>
@@ -82,11 +84,22 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-sm);
-    margin-top: var(--space-sm);
+  }
+  .honey {
+    flex: 1 1 14rem;
+    min-height: 3.5rem;
+    font-size: 1.125rem;
+  }
+  .ghost {
+    min-height: 3.5rem;
   }
   p {
     flex-basis: 100%;
     margin: 0;
     color: var(--color-danger);
+    font-weight: 600;
+  }
+  .login {
+    font-weight: 700;
   }
 </style>
