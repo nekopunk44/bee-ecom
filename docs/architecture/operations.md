@@ -86,6 +86,7 @@ volumes; deleting volumes loses local data.
    login throttling and media validation with customer authentication, TOTP,
    broader rate limits, payment security and the Milestone 5 acceptance checklist.
 
-CI currently validates changes; it does not publish images, create cloud
-resources or deploy automatically. Registry, environment and deployment secrets
-must be configured for the later CD milestone.
+CI validates changes and publishes only the image of the free demo stand
+([demo deployment](demo-deployment.md)); it does not create production resources
+or deploy production. Registry, environment and deployment secrets must be
+configured for the later CD milestone.

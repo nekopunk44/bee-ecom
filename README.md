@@ -54,6 +54,13 @@ docker compose down
 `down` сохраняет данные в named volumes. Изменение `.env` не меняет автоматически
 пароль уже созданной базы PostgreSQL. Подробности: [эксплуатация](docs/architecture/operations.md).
 
+## Демо-стенд в интернете
+
+Витрина и админка выкладываются на Vercel (`apps/*/vercel.json`), API с PostgreSQL и
+Key Value — на бесплатный Render (`render.yaml`). Образ API для Render публикует CI
+после проверки стека. Это демо, а не производственный запуск: шаги подключения и
+ограничения бесплатных тарифов описаны в [demo-deployment.md](docs/architecture/demo-deployment.md).
+
 ## Первый вход в админку
 
 После запуска стека выполните `./infra/scripts/create-admin.ps1` в PowerShell.
