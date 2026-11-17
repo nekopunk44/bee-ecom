@@ -1,0 +1,76 @@
+# Demo stand on Render's free plan: the C++ API, PostgreSQL and Key Value.
+# Storefront and admin run on Vercel and proxy /api here (apps/*/vercel.json).
+# Not a production setup: see docs/architecture/demo-deployment.md.
+services:
+  - type: web
+    name: bee-ecom-api
+    runtime: image
+    image:
+      # Published by CI from infra/docker/backend.Dockerfile (target render).
+      url: ghcr.io/nekopunk44/bee-ecom-api:latest
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      # staging/production demand verify-full TLS to PostgreSQL; Render's internal
+      # network connection is plain, so the demo runs with development settings.
+      - key: APP_ENV
+        value: development
+      - key: PORT
+        value: '8080'
+      - key: API_PORT
+        value: '8080'
+      - key: API_THREADS
+        value: '2'
+      # Blueprints expose no host/port for data stores, only connection strings;
+      # infra/render/start.sh derives PGHOST/PGPORT and REDIS_HOST/REDIS_PORT.
+      - key: DATABASE_URL
+        fromDatabase: { name: bee-db, property: connectionString }
+      - key: PGDATABASE
+        fromDatabase: { name: bee-db, property: database }
+      - key: PGUSER
+        fromDatabase: { name: bee-db, property: user }
+      - key: PGPASSWORD
+        fromDatabase: { name: bee-db, property: password }
+      - key: PGSSLMODE
+        value: disable
+      - key: REDIS_URL
+        fromService:
+          { type: keyvalue, name: bee-kv, property: connectionString }
+      # Internal Key Value connections accept any password for the user "default".
+      - key: REDIS_PASSWORD
+        generateValue: true
+      - key: STOREFRONT_ORIGIN
+        value: https://bee-ecom.vercel.app
+      - key: ADMIN_ORIGIN
+        value: https://bee-ecom-admin.vercel.app
+      # No media storage yet: the API starts, image uploads answer 503.
+      - key: S3_ENDPOINT
+        value: https://media.invalid
+      - key: S3_BUCKET
+        value: bee-media
+      - key: S3_ACCESS_KEY
+        value: not-configured
+      - key: S3_SECRET_KEY
+        value: not-configured
+      - key: S3_REGION
+        value: us-east-1
+      # Entered in the Render dashboard; the first start creates this administrator.
+      - key: BEE_ADMIN_EMAIL
+        sync: false
+      - key: BEE_ADMIN_PASSWORD
+        sync: false
+  - type: keyvalue
+    name: bee-kv
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: bee-db
+    plan: free
+    region: frankfurt
+    databaseName: bee
+    user: bee
+    ipAllowList: []
