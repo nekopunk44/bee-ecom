@@ -32,3 +32,18 @@ COPY --from=build /src/bee/build/bee-admin-create /usr/local/bin/bee-admin-creat
 USER 10001
 EXPOSE 8080
 CMD ["bee-api"]
+
+FROM node:22.22.0-bookworm-slim AS render-deps
+WORKDIR /deps
+RUN npm install --omit=dev --no-audit --no-fund pg@8.23.0
+
+# Render's free plan has no pre-deploy step: this image applies migrations and can
+# provision the first administrator before it starts the API (infra/render/start.sh).
+FROM runtime AS render
+COPY --from=render-deps /usr/local/bin/node /usr/local/bin/node
+WORKDIR /app
+COPY --from=render-deps /deps/node_modules ./node_modules
+COPY infra/scripts/migrate.mjs infra/scripts/migration-plan.mjs ./infra/scripts/
+COPY database/migrations ./database/migrations
+COPY infra/render/start.sh ./start.sh
+CMD ["sh", "/app/start.sh"]

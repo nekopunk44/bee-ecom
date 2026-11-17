@@ -111,7 +111,12 @@ services:
     restart: 'no'
 
   api:
-    build: { context: ., dockerfile: infra/docker/backend.Dockerfile }
+    build:
+      {
+        context: .,
+        dockerfile: infra/docker/backend.Dockerfile,
+        target: runtime,
+      }
     image: bee-backend:local
     environment: *backend-environment
     depends_on:
@@ -140,7 +145,12 @@ services:
     restart: unless-stopped
 
   worker:
-    build: { context: ., dockerfile: infra/docker/backend.Dockerfile }
+    build:
+      {
+        context: .,
+        dockerfile: infra/docker/backend.Dockerfile,
+        target: runtime,
+      }
     image: bee-backend:local
     command: [bee-worker]
     environment: *backend-environment
