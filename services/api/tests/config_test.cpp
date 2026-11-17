@@ -16,8 +16,15 @@ int main() {
     };
     try {
         const auto config = bee::Config::load(read);
-        if (config.port != 8080 || config.postgresConnection.find("password='a\\'b\\\\c'") == std::string::npos)
+        if (config.port != 8080 || config.redisUsername != "default" ||
+            config.postgresConnection.find("password='a\\'b\\\\c'") == std::string::npos)
             throw std::runtime_error("Defaults or libpq escaping failed");
+        values["REDIS_USERNAME"] = "bee";
+        if (bee::Config::load(read).redisUsername != "bee")
+            throw std::runtime_error("Redis username override ignored");
+        values["REDIS_USERNAME"] = "bee\r\nFLUSHALL";
+        expectRejected();
+        values.erase("REDIS_USERNAME");
         for (const auto* invalid : {"0", "-1", "65536", "12abc", " 80", "99999999999999999999"}) {
             values["API_PORT"] = invalid;
             expectRejected();

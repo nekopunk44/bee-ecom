@@ -38,7 +38,8 @@ int main() {
         drogon::app().setLogLevel(trantor::Logger::kFatal);
         auto postgres = drogon::orm::DbClient::newPgClient(config.postgresConnection, 4);
         postgres->setTimeout(2.0);
-        auto redis = drogon::nosql::RedisClient::newRedisClient(redisAddress(config.redisHost, config.redisPort), 2, config.redisPassword);
+        auto redis = drogon::nosql::RedisClient::newRedisClient(redisAddress(config.redisHost, config.redisPort), 2,
+            config.redisPassword, 0, config.redisUsername);
         redis->setTimeout(2.0);
         bee::configureHttp();
         bee::Executor executor(4);

@@ -57,6 +57,9 @@ Config Config::load(const Environment& read) {
     if (ssl == "verify-full") config.postgresConnection += " sslrootcert=" + quote(required(read, "PGSSLROOTCERT"));
     config.redisHost = required(read, "REDIS_HOST");
     config.redisPort = static_cast<unsigned short>(number(read, "REDIS_PORT", 6379, 65535));
+    // "AUTH default <password>" works with requirepass and with managed Redis whose
+    // default user has no password (Render Key Value), unlike the one-argument form.
+    config.redisUsername = read("REDIS_USERNAME").empty() ? "default" : required(read, "REDIS_USERNAME");
     config.redisPassword = required(read, "REDIS_PASSWORD");
     return config;
 }

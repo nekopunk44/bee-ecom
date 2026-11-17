@@ -11,6 +11,7 @@ struct Config {
     std::string postgresConnection;
     std::string redisHost;
     unsigned short redisPort;
+    std::string redisUsername;
     std::string redisPassword;
     static Config load(const Environment& read);
     static Config fromEnvironment();
