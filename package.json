@@ -29,6 +29,11 @@
   "dependencies": {
     "pg": "8.23.0"
   },
+  "overrides": {
+    "@vercel/routing-utils": {
+      "path-to-regexp": "6.3.0"
+    }
+  },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "1.63.0",

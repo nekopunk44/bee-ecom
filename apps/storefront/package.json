@@ -10,9 +10,10 @@
     "start": "node dist/server/entry.mjs"
   },
   "dependencies": {
-    "@bee/api-client": "0.1.0",
     "@astrojs/node": "11.1.6",
     "@astrojs/svelte": "9.0.1",
+    "@astrojs/vercel": "11.0.11",
+    "@bee/api-client": "0.1.0",
     "@bee/ui": "0.1.0",
     "astro": "7.3.4",
     "svelte": "5.57.1"
