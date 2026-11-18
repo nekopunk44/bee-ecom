@@ -85,7 +85,7 @@ const text = {
           <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path>
         </svg>
       </a>
-      <a class="cart" href={`/${locale}/cart/`}>
+      <a class="cart" href={`/${locale}/cart/`} data-cart-link>
         <svg
           width="20"
           height="20"
@@ -126,6 +126,15 @@ const text = {
     background: var(--color-night);
     color: #ffffff;
     --color-focus: var(--color-honey);
+    /* При переходе между страницами шапка стоит на месте, меняется только содержимое. */
+    view-transition-name: site-header;
+  }
+  /* Сота в логотипе поворачивается на грань — соты симметричны, поэтому это игра, а не смена знака. */
+  .brand :global(svg) {
+    transition: transform var(--motion-slow) var(--ease-spring);
+  }
+  .brand:hover :global(svg) {
+    transform: rotate(60deg);
   }
   .bar {
     display: flex;

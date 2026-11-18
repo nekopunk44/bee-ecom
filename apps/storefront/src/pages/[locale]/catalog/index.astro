@@ -76,8 +76,10 @@ const refined =
   <main id="main" class="container">
     <div class="heading">
       <div>
-        <p class="eyebrow">{t.catalog}</p>
-        <h1 class="display">{t.title}</h1>
+        <p class="eyebrow rise">{t.catalog}</p>
+        <h1 class="display rise" style="--delay: 80ms">
+          {t.title}
+        </h1>
       </div>
       {!failed && (
         <p class="found">
@@ -175,7 +177,7 @@ const refined =
             {data?.items.length ? (
               <div class="products">
                 {data.items.map((product) => (
-                  <ProductCard product={product} locale={locale} />
+                  <ProductCard product={product} locale={locale} reveal />
                 ))}
               </div>
             ) : (

@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { fade, fly, slide } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
+  import { Tween, prefersReducedMotion } from 'svelte/motion';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
   import { formatMoney } from '../lib/money';
@@ -197,6 +200,16 @@
         : null,
   );
 
+  // Итог плавно досчитывает, когда меняется способ доставки.
+  const shownTotal = Tween.of(
+    () => (checkout?.itemsTotalMinor ?? 0) + (deliveryMinor ?? 0),
+    {
+      duration: () => (prefersReducedMotion.current ? 0 : 420),
+      easing: cubicOut,
+    },
+  );
+  const reveal = { duration: 280, easing: cubicOut };
+
   async function load() {
     loading = true;
     loadError = '';
@@ -314,7 +327,7 @@
 </script>
 
 <div class="checkout">
-  {#if loading && !checkout}<p class="state" aria-live="polite">
+  {#if loading && !checkout}<p class="state shimmer" aria-live="polite">
       {copy.loading}
     </p>
   {:else if authRequired}
@@ -363,64 +376,72 @@
           </div>
 
           {#if method === 'pickup'}
-            <label for="checkout-warehouseId">{copy.warehouse}</label>
-            <select
-              id="checkout-warehouseId"
-              required
-              bind:value={form.warehouseId}
-              aria-invalid={invalid?.field === 'warehouseId' || undefined}
-              aria-describedby={describedBy('warehouseId')}
-            >
-              {#each checkout.warehouses as warehouse (warehouse.id)}
-                <option value={warehouse.id} disabled={!warehouse.ready}
-                  >{warehouse.ready
-                    ? warehouse.name
-                    : `${warehouse.name} — ${copy.notReady}`}</option
-                >
-              {/each}
-            </select>
-          {:else}
-            {#if method === 'post'}
-              <label for="checkout-locality">{copy.locality}</label>
-              <input
-                id="checkout-locality"
-                autocomplete="address-level2"
+            <div class="fields" in:slide={reveal}>
+              <label for="checkout-warehouseId">{copy.warehouse}</label>
+              <select
+                id="checkout-warehouseId"
                 required
-                minlength="2"
-                maxlength="120"
-                bind:value={form.locality}
-                aria-invalid={invalid?.field === 'locality' || undefined}
-                aria-describedby={describedBy('locality')}
-              />
-            {/if}
-            <label for="checkout-address">{copy.address}</label>
-            <input
-              id="checkout-address"
-              autocomplete="street-address"
-              required
-              minlength="5"
-              maxlength="240"
-              placeholder={copy.addressHint}
-              bind:value={form.address}
-              aria-invalid={invalid?.field === 'address' || undefined}
-              aria-describedby={describedBy('address')}
-            />
-            {#if method === 'post'}
-              <label for="checkout-postalCode"
-                >{copy.postalCode} <span>({copy.optional})</span></label
+                bind:value={form.warehouseId}
+                aria-invalid={invalid?.field === 'warehouseId' || undefined}
+                aria-describedby={describedBy('warehouseId')}
               >
+                {#each checkout.warehouses as warehouse (warehouse.id)}
+                  <option value={warehouse.id} disabled={!warehouse.ready}
+                    >{warehouse.ready
+                      ? warehouse.name
+                      : `${warehouse.name} — ${copy.notReady}`}</option
+                  >
+                {/each}
+              </select>
+            </div>
+          {:else}
+            <div class="fields" in:slide={reveal}>
+              {#if method === 'post'}
+                <div class="fields" transition:slide={reveal}>
+                  <label for="checkout-locality">{copy.locality}</label>
+                  <input
+                    id="checkout-locality"
+                    autocomplete="address-level2"
+                    required
+                    minlength="2"
+                    maxlength="120"
+                    bind:value={form.locality}
+                    aria-invalid={invalid?.field === 'locality' || undefined}
+                    aria-describedby={describedBy('locality')}
+                  />
+                </div>
+              {/if}
+              <label for="checkout-address">{copy.address}</label>
               <input
-                id="checkout-postalCode"
-                class="short"
-                autocomplete="postal-code"
-                inputmode="numeric"
-                maxlength="16"
-                placeholder="MD-2001"
-                bind:value={form.postalCode}
-                aria-invalid={invalid?.field === 'postalCode' || undefined}
-                aria-describedby={describedBy('postalCode')}
+                id="checkout-address"
+                autocomplete="street-address"
+                required
+                minlength="5"
+                maxlength="240"
+                placeholder={copy.addressHint}
+                bind:value={form.address}
+                aria-invalid={invalid?.field === 'address' || undefined}
+                aria-describedby={describedBy('address')}
               />
-            {/if}
+              {#if method === 'post'}
+                <div class="fields" transition:slide={reveal}>
+                  <label for="checkout-postalCode"
+                    >{copy.postalCode} <span>({copy.optional})</span></label
+                  >
+                  <input
+                    id="checkout-postalCode"
+                    class="short"
+                    autocomplete="postal-code"
+                    inputmode="numeric"
+                    maxlength="16"
+                    placeholder="MD-2001"
+                    bind:value={form.postalCode}
+                    aria-invalid={invalid?.field === 'postalCode' || undefined}
+                    aria-describedby={describedBy('postalCode')}
+                  />
+                </div>
+              {/if}
+            </div>
           {/if}
         </fieldset>
 
@@ -500,37 +521,40 @@
           <div>
             <dt>{copy.shipping}</dt>
             <dd>
-              {deliveryMinor === 0
-                ? copy.free
-                : deliveryMinor !== null
-                  ? formatMoney(locale, deliveryMinor)
-                  : method === 'courier'
-                    ? copy.courierLater
-                    : copy.postLater}
+              {#key method}<span in:fade={{ duration: 220 }}
+                  >{deliveryMinor === 0
+                    ? copy.free
+                    : deliveryMinor !== null
+                      ? formatMoney(locale, deliveryMinor)
+                      : method === 'courier'
+                        ? copy.courierLater
+                        : copy.postLater}</span
+                >{/key}
             </dd>
           </div>
           <div class="total">
             <dt>{copy.total}</dt>
             <dd>
-              {formatMoney(
-                locale,
-                checkout.itemsTotalMinor + (deliveryMinor ?? 0),
-              )}
-              {#if deliveryMinor === null}<small>{copy.totalPlusDelivery}</small
+              {formatMoney(locale, Math.round(shownTotal.current))}
+              {#if deliveryMinor === null}<small
+                  transition:fade={{ duration: 200 }}
+                  >{copy.totalPlusDelivery}</small
                 >{/if}
             </dd>
           </div>
         </dl>
         <div aria-live="assertive">
           {#if invalid}
-            <p id="checkout-error" class="error">{invalid.message}</p>
+            <p id="checkout-error" class="error" in:fly={{ y: -6, ...reveal }}>
+              {invalid.message}
+            </p>
           {:else if submitError}
-            <p class="error">{submitError}</p>
+            <p class="error" in:fly={{ y: -6, ...reveal }}>{submitError}</p>
             {#if showOrders}<a href={`/${locale}/orders/`}>{copy.orders}</a
               >{/if}
           {/if}
         </div>
-        <button class="button honey" disabled={busy}
+        <button class="button honey" class:busy disabled={busy}
           >{busy ? copy.submitting : copy.submit}</button
         >
       </aside>
@@ -600,7 +624,15 @@
     display: grid;
     gap: var(--space-xs);
   }
+  .fields {
+    display: grid;
+    gap: var(--space-xs);
+  }
   .method {
+    transition:
+      border-color var(--motion-normal) var(--ease-standard),
+      background-color var(--motion-normal) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
     margin: 0;
     display: flex;
     align-items: flex-start;
@@ -613,6 +645,12 @@
   .method:has(input:checked) {
     border-color: var(--color-ink);
     background: var(--color-honey-soft);
+  }
+  .method:not(.disabled):hover {
+    border-color: var(--color-muted);
+  }
+  .method:not(.disabled):active {
+    transform: scale(0.99);
   }
   .method.disabled {
     cursor: not-allowed;
@@ -643,6 +681,15 @@
   }
   [aria-invalid='true'] {
     border-color: var(--color-danger);
+    animation: shake 360ms var(--ease-standard);
+  }
+  .busy {
+    animation: pending 900ms var(--ease-in-out) infinite;
+  }
+  @keyframes pending {
+    50% {
+      opacity: 0.75;
+    }
   }
   .payment {
     display: grid;

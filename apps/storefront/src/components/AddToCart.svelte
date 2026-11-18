@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { fly } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
   import { createApiClient } from '@bee/api-client';
+  import { flyToCart } from '../lib/motion';
   import type { Locale } from '../i18n';
   let { variantId, locale }: { variantId: string; locale: Locale } = $props();
   const api = createApiClient();
@@ -25,6 +28,7 @@
   let done = $state(false);
   let error = $state('');
   let needsLogin = $state(false);
+  let button = $state<HTMLButtonElement>();
 
   async function add() {
     busy = true;
@@ -59,6 +63,7 @@
         return;
       }
       done = true;
+      if (button) flyToCart(button);
     } catch {
       error = copy.failed;
     } finally {
@@ -68,10 +73,29 @@
 </script>
 
 <div class="cart-action">
-  <button class="button honey" onclick={add} disabled={busy}
-    >{done ? copy.added : copy.add}</button
+  <button
+    class="button honey"
+    class:busy
+    onclick={add}
+    disabled={busy}
+    bind:this={button}
   >
-  {#if done}<a class="button ghost" href={`/${locale}/cart/`}>{copy.cart}</a
+    {#key done}
+      <span class="label" in:fly={{ y: 10, duration: 320, easing: backOut }}>
+        {#if done}<svg
+            class="check"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+          >{/if}{done ? copy.added : copy.add}
+      </span>
+    {/key}
+  </button>
+  {#if done}<a
+      class="button ghost"
+      href={`/${locale}/cart/`}
+      in:fly={{ x: -12, duration: 360, easing: backOut }}>{copy.cart}</a
     >{/if}
   {#if error}<p role="alert">{error}</p>{/if}
   {#if needsLogin}<a class="login" href={`/${locale}/account/`}>{copy.signIn}</a
@@ -92,6 +116,36 @@
   }
   .ghost {
     min-height: 3.5rem;
+  }
+  .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  /* Галочка дорисовывается штрихом, как от руки. */
+  .check path {
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 24;
+    animation: draw 420ms var(--ease-out) 120ms both;
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 24;
+    }
+  }
+  /* Пока запрос идёт, кнопка тихо «дышит», а не застывает. */
+  .busy {
+    animation: pending 900ms var(--ease-in-out) infinite;
+  }
+  @keyframes pending {
+    50% {
+      opacity: 0.7;
+      transform: scale(0.985);
+    }
   }
   p {
     flex-basis: 100%;

@@ -147,7 +147,11 @@ button:not(.button) {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Бесконечные петли (пчела, соты) иначе мерцали бы с огромной скоростью. */
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
 }

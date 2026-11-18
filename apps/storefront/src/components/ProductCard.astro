@@ -7,8 +7,10 @@ interface Props {
   locale: Locale;
   /** На главной карточки стоят под заголовком раздела, поэтому их заголовок третьего уровня. */
   level?: 2 | 3;
+  /** Проявляться при прокрутке (на главной и в каталоге). */
+  reveal?: boolean;
 }
-const { product, locale, level = 2 } = Astro.props;
+const { product, locale, level = 2, reveal = false } = Astro.props;
 const Heading = level === 3 ? 'h3' : 'h2';
 const translation = product.translations[locale];
 const image = product.images[0];
@@ -19,9 +21,12 @@ const price = Math.min(...prices);
 const several = new Set(prices).size > 1;
 ---
 
-<article>
+<article data-reveal={reveal || undefined}>
   <a href={`/${locale}/catalog/${product.slug}/`} aria-label={translation.name}>
-    <div class:list={['picture', { empty: !image }]}>
+    <div
+      class:list={['picture', { empty: !image }]}
+      style={`view-transition-name: product-${product.slug}`}
+    >
       {image ? (
         <img
           src={image.url}
@@ -55,6 +60,9 @@ const several = new Set(prices).size > 1;
     text-decoration: none;
   }
   .picture {
+    transition:
+      transform var(--motion-normal) var(--ease-out),
+      box-shadow var(--motion-normal) var(--ease-out);
     aspect-ratio: 1;
     display: grid;
     place-items: center;
@@ -81,7 +89,16 @@ const several = new Set(prices).size > 1;
     transition: transform var(--motion-normal) var(--ease-standard);
   }
   a:hover img {
-    transform: scale(1.03);
+    transform: scale(1.05);
+  }
+  /* Карточка приподнимается под указателем и чуть проседает при нажатии. */
+  a:hover .picture {
+    transform: translateY(-4px);
+    box-shadow: 0 1rem 2rem rgb(23 21 15 / 12%);
+  }
+  a:active .picture {
+    transform: translateY(-1px) scale(0.99);
+    transition-duration: var(--motion-fast);
   }
   h2,
   h3 {
