@@ -1,0 +1,43 @@
+name: Agent task
+description: A small, self-contained task an AI agent can finish in one pull request
+labels: [agent-ready]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should exist when the task is done, in one or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable statements. The agent is done when all of them are true.
+      placeholder: |
+        - [ ] ...
+        - [ ] `npm run verify` passes
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Files, functions, migrations or documents the agent should read first.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Files and scope
+      description: Where the change belongs and what must not be touched.
+      placeholder: |
+        Touch: tests/orders-database.test.mjs
+        Do not touch: apps/, services/
+  - type: dropdown
+    id: role
+    attributes:
+      label: Starting role
+      options:
+        - developer (tests, scripts, contract, docs)
+        - qa (review only)
+    validations:
+      required: true

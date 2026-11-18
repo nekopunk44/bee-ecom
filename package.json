@@ -24,7 +24,13 @@
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test",
     "test:stack": "node infra/scripts/smoke.mjs",
-    "db:migrate": "node infra/scripts/migrate.mjs"
+    "db:migrate": "node infra/scripts/migrate.mjs",
+    "verify": "npm run format:check && npm run check && npm test && npm run build",
+    "agent:new": "node infra/scripts/agent-worktree.mjs new",
+    "agent:list": "git worktree list",
+    "agent:remove": "node infra/scripts/agent-worktree.mjs remove",
+    "agent:ready": "node infra/scripts/agent-run.mjs ready",
+    "agent:run": "node --env-file-if-exists=.env.local infra/scripts/agent-run.mjs run"
   },
   "dependencies": {
     "pg": "8.23.0"
