@@ -17,8 +17,9 @@
         signedIn: 'Вы вошли как',
         logout: 'Выйти',
         cart: 'Открыть корзину',
+        orders: 'Мои заказы',
         account: 'Аккаунт покупателя',
-        welcome: 'После входа здесь будут ваши заказы и данные профиля.',
+        welcome: 'Корзина и заказы привязаны к этому аккаунту.',
         unavailable: 'Этот адрес уже зарегистрирован.',
         invalid: 'Проверьте адрес почты и пароль.',
         forbidden: 'Запрос отклонён: источник не прошёл проверку безопасности.',
@@ -34,9 +35,9 @@
         signedIn: 'Autentificat ca',
         logout: 'Ieșire',
         cart: 'Deschide coșul',
+        orders: 'Comenzile mele',
         account: 'Cont client',
-        welcome:
-          'După autentificare, aici vor apărea comenzile și datele profilului.',
+        welcome: 'Coșul și comenzile sunt legate de acest cont.',
         unavailable: 'Această adresă este deja înregistrată.',
         invalid: 'Verifică adresa și parola.',
         forbidden:
@@ -129,6 +130,7 @@
     <p>{copy.welcome}</p>
     <div class="links">
       <a class="button honey" href={`/${locale}/cart/`}>{copy.cart}</a>
+      <a class="button ghost" href={`/${locale}/orders/`}>{copy.orders}</a>
       <button class="button ghost" onclick={logout} disabled={busy}
         >{copy.logout}</button
       >

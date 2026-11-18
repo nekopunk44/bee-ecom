@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
+  import { formatMoney as money } from '../lib/money';
   let { locale }: { locale: Locale } = $props();
   type Cart = components['schemas']['CustomerCart'];
   type Item = components['schemas']['CustomerCartItem'];
@@ -23,7 +24,8 @@
       increase: 'Увеличить количество',
       subtotal: 'Промежуточный итог',
       prices: 'Цены и наличие будут подтверждены при оформлении заказа.',
-      soon: 'Оформление заказа и доставка скоро появятся. Корзина сохранится в аккаунте.',
+      checkout: 'Оформить заказ',
+      payment: 'Оплата при получении: курьер, самовывоз или почта.',
       browse: 'Перейти в каталог',
       more: 'Продолжить покупки',
       retry: 'Повторить',
@@ -46,7 +48,8 @@
       subtotal: 'Subtotal',
       prices:
         'Prețul și disponibilitatea vor fi confirmate la plasarea comenzii.',
-      soon: 'Plasarea comenzii și livrarea vor fi disponibile în curând. Coșul rămâne salvat în cont.',
+      checkout: 'Plasează comanda',
+      payment: 'Plata la primire: curier, ridicare din depozit sau poștă.',
       browse: 'Deschide catalogul',
       more: 'Continuă cumpărăturile',
       retry: 'Reîncearcă',
@@ -67,11 +70,7 @@
   let pieces = $derived(
     (cart?.items ?? []).reduce((sum, item) => sum + item.quantity, 0),
   );
-  const formatMoney = (minor: number) =>
-    new Intl.NumberFormat(locale === 'ro' ? 'ro-MD' : 'ru-MD', {
-      style: 'currency',
-      currency: 'MDL',
-    }).format(minor / 100);
+  const formatMoney = (minor: number) => money(locale, minor);
   const plural = new Intl.PluralRules(locale);
   // «2 товара, 3 штуки»: в русском и румынском у слова три формы, «other» берёт последнюю.
   const count = (
@@ -241,7 +240,9 @@
           <strong>{formatMoney(subtotal)}</strong>
         </p>
         <p class="note">{copy.prices}</p>
-        <p class="soon">{@render hex(20)}<span>{copy.soon}</span></p>
+        <a class="button honey" href={`/${locale}/checkout/`}>{copy.checkout}</a
+        >
+        <p class="soon">{@render hex(20)}<span>{copy.payment}</span></p>
         <a class="button ghost" href={`/${locale}/catalog/`}>{copy.more}</a>
       </aside>
     </div>

@@ -1,0 +1,36 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import StoreHeader from '../../../components/StoreHeader.astro';
+import StoreFooter from '../../../components/StoreFooter.astro';
+import PageTop from '../../../components/PageTop.astro';
+import OrdersWorkspace from '../../../components/OrdersWorkspace.svelte';
+import { isLocale } from '../../../i18n';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const text = {
+  ru: {
+    title: 'Мои заказы',
+    note: 'Здесь видно, на каком этапе каждый заказ. Новый заказ можно отменить, пока его не подтвердили.',
+  },
+  ro: {
+    title: 'Comenzile mele',
+    note: 'Aici vezi în ce etapă este fiecare comandă. O comandă nouă poate fi anulată până la confirmare.',
+  },
+}[locale];
+---
+
+<Layout
+  locale={locale}
+  title={`${text.title} — Bee`}
+  description={text.title}
+  noindex
+>
+  <StoreHeader locale={locale} />
+  <main id="main">
+    <PageTop title={text.title} text={text.note} />
+    <div class="container">
+      <OrdersWorkspace client:load locale={locale} />
+    </div>
+  </main>
+  <StoreFooter locale={locale} />
+</Layout>

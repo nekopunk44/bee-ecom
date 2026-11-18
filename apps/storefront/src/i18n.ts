@@ -13,7 +13,7 @@ export const messages = {
     intro:
       'Продуманное оборудование. Совместимые системы. Всё, что помогает заботиться о пчёлах и развивать своё дело.',
     notice:
-      'Выбирайте в каталоге и складывайте в корзину. Оформление заказа и доставка скоро появятся.',
+      'Выбирайте в каталоге, складывайте в корзину и оформляйте заказ с оплатой при получении.',
     open: 'Открыть каталог',
     popular: 'Часто ищут',
     queries: ['Дадан', 'Рута', 'Лежак', 'Медогонка'],
@@ -37,8 +37,8 @@ export const messages = {
         text: 'Отложенные товары сохраняются и открываются с любого устройства.',
       },
       {
-        title: 'Заказ и доставка скоро',
-        text: 'Оформление заказа и доставку по Молдове готовим. Пока можно выбрать и отложить.',
+        title: 'Оплата при получении',
+        text: 'Курьер, самовывоз со склада или почта по Молдове — платите, когда заказ у вас.',
       },
     ],
     footer: 'Для тех, кто создаёт свою пасеку.',
@@ -53,7 +53,7 @@ export const messages = {
     intro:
       'Echipamente bine gândite. Sisteme compatibile. Tot ce te ajută să îngrijești albinele și să îți dezvolți afacerea.',
     notice:
-      'Alege din catalog și adaugă în coș. Plasarea comenzii și livrarea vor fi disponibile în curând.',
+      'Alege din catalog, adaugă în coș și plasează comanda cu plata la primire.',
     open: 'Deschide catalogul',
     popular: 'Căutări frecvente',
     queries: ['Dadant', 'Langstroth', 'Stup orizontal', 'Extractor'],
@@ -77,8 +77,8 @@ export const messages = {
         text: 'Produsele puse deoparte se păstrează și se deschid de pe orice dispozitiv.',
       },
       {
-        title: 'Comenzi și livrare în curând',
-        text: 'Pregătim plasarea comenzilor și livrarea în Moldova. Deocamdată poți alege și pune deoparte.',
+        title: 'Plata la primire',
+        text: 'Curier, ridicare din depozit sau poștă în Moldova — plătești când comanda ajunge la tine.',
       },
     ],
     footer: 'Pentru cei care își construiesc propria stupină.',

@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StoreHeader from '../../components/StoreHeader.astro';
+import StoreFooter from '../../components/StoreFooter.astro';
+import PageTop from '../../components/PageTop.astro';
+import CheckoutWorkspace from '../../components/CheckoutWorkspace.svelte';
+import { isLocale } from '../../i18n';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const text = {
+  ru: {
+    title: 'Оформление заказа',
+    note: 'Выберите, как получить заказ, и оставьте телефон: мы позвоним, чтобы подтвердить его.',
+  },
+  ro: {
+    title: 'Plasarea comenzii',
+    note: 'Alege cum primești comanda și lasă un număr de telefon: te sunăm pentru confirmare.',
+  },
+}[locale];
+---
+
+<Layout
+  locale={locale}
+  title={`${text.title} — Bee`}
+  description={text.title}
+  noindex
+>
+  <StoreHeader locale={locale} />
+  <main id="main">
+    <PageTop title={text.title} text={text.note} />
+    <div class="container">
+      <CheckoutWorkspace client:load locale={locale} />
+    </div>
+  </main>
+  <StoreFooter locale={locale} />
+</Layout>
