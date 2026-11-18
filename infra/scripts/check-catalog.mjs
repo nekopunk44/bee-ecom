@@ -192,6 +192,18 @@ await request(`/admin/products/${created.id}`, 409, 'PUT', {
 });
 const product = await (await request(`/products/${draft.slug}`, 200)).json();
 assert.equal(product.variants[0].priceMinor, 12345);
+// Lists go through Drogon's binary parameters, which the PGlite tests do not use.
+const listed = await (
+  await request(`/products?locale=ru&q=${encodeURIComponent(suffix)}`, 200)
+).json();
+assert.deepEqual(
+  listed.items.map((item) => item.id),
+  [created.id],
+);
+const adminList = await (
+  await request('/admin/products?locale=ru&page=1&limit=12', 200)
+).json();
+assert.ok(adminList.items.some((item) => item.id === created.id));
 const warehouse = await (
   await request('/admin/warehouses', 201, 'POST', {
     code: `ci-${suffix}`,
