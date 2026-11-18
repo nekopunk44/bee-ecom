@@ -403,6 +403,92 @@ paths:
                 $ref: '#/components/schemas/Order'
         default:
           $ref: '#/components/responses/ApiError'
+  /api/v1/admin/orders:
+    get:
+      operationId: listAdminOrders
+      summary: List orders for staff, newest first
+      tags: [Orders]
+      security:
+        - AdminSession: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            {
+              type: string,
+              enum: [new, confirmed, ready, shipped, completed, cancelled],
+            }
+        - in: query
+          name: q
+          description: Part of the order number, the recipient's name or phone
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: One page of matching orders and order counts per status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOrderList'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/admin/orders/{orderId}:
+    get:
+      operationId: getAdminOrder
+      summary: Get any order for staff
+      tags: [Orders]
+      security:
+        - AdminSession: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/admin/orders/{orderId}/status:
+    post:
+      operationId: changeOrderStatus
+      summary: Move an order to its next status
+      description: >
+        `from` must be the status the operator saw; a changed order returns
+        409 ORDER_STATUS_CHANGED. Repeating a step that already happened returns
+        the order unchanged.
+      tags: [Orders]
+      security:
+        - AdminSession: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusChange'
+      responses:
+        '200':
+          description: Order after the transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        default:
+          $ref: '#/components/responses/ApiError'
   /api/v1/admin/media:
     $ref: './catalog.json#/endpoints/upload'
   /api/v1/media/{id}/{filename}:
@@ -754,6 +840,101 @@ components:
           enum: [MDL]
         quantity:
           type: integer
+    AdminOrderSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          number,
+          status,
+          createdAt,
+          deliveryMethod,
+          recipientName,
+          phone,
+          itemsTotalMinor,
+          deliveryPriceMinor,
+          totalMinor,
+          currency,
+          quantity,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        status:
+          type: string
+          enum: [new, confirmed, ready, shipped, completed, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        deliveryMethod:
+          type: string
+          enum: [pickup, courier, post]
+        recipientName:
+          type: string
+        phone:
+          type: string
+        itemsTotalMinor:
+          type: integer
+        deliveryPriceMinor:
+          type: integer
+          nullable: true
+        totalMinor:
+          type: integer
+          nullable: true
+        currency:
+          type: string
+          enum: [MDL]
+        quantity:
+          type: integer
+    AdminOrderList:
+      type: object
+      additionalProperties: false
+      required: [items, total, counts]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AdminOrderSummary'
+        total:
+          type: integer
+          minimum: 0
+        counts:
+          type: object
+          additionalProperties: false
+          required: [new, confirmed, ready, shipped, completed, cancelled]
+          properties:
+            new: { type: integer }
+            confirmed: { type: integer }
+            ready: { type: integer }
+            shipped: { type: integer }
+            completed: { type: integer }
+            cancelled: { type: integer }
+    OrderStatusChange:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          enum: [new, confirmed, ready, shipped, completed, cancelled]
+        to:
+          type: string
+          enum: [confirmed, ready, shipped, completed, cancelled]
+        deliveryPriceMinor:
+          description: Courier or post price agreed on confirmation
+          type: integer
+          minimum: 0
+          maximum: 100000000
+        trackingNumber:
+          description: Post tracking number, set when the order ships
+          type: string
+          minLength: 1
+          maxLength: 64
     OrderList:
       type: object
       additionalProperties: false

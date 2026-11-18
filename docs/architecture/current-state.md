@@ -34,8 +34,15 @@ and `/api/v1/orders/{orderId}/cancel`.
 The storefront uses them on `/[locale]/checkout/` (courier, pickup from a
 warehouse that holds the whole cart, or post; one idempotency key per attempt),
 `/[locale]/orders/` and `/[locale]/orders/<id>/` with cancellation. Browser
-tests cover these pages against a mocked API; they have not run against the
-real API and PostgreSQL.
+tests cover these pages against a mocked API; the CI stack check places, replays
+and cancels a real order against the API and PostgreSQL.
+
+Staff order management is added by migration `0007_order_management.sql`. The
+admin «Заказы» tab uses three endpoints: `GET /api/v1/admin/orders` (list with
+filtering), `GET /api/v1/admin/orders/{id}` (detail), and
+`POST /api/v1/admin/orders/{id}/status` (transition). The lifecycle, concurrency
+control, stock fulfilment on ship/pickup, delivery price and tracking number,
+permissions and audit are described in [ADR 0012](../adr/0012-order-lifecycle.md).
 
 What does not exist yet: online payment and delivery-service adapters.
 
