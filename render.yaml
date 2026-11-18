@@ -44,17 +44,19 @@ services:
         value: https://bee-ecom.vercel.app
       - key: ADMIN_ORIGIN
         value: https://bee-ecom-admin.vercel.app
-      # No media storage yet: the API starts, image uploads answer 503.
+      # Media bucket (Backblaze B2), entered in the Render dashboard so that a
+      # Blueprint sync never overwrites the key. All five are required to start;
+      # without storage use placeholders and uploads answer 503.
       - key: S3_ENDPOINT
-        value: https://media.invalid
+        sync: false
       - key: S3_BUCKET
-        value: bee-media
+        sync: false
       - key: S3_ACCESS_KEY
-        value: not-configured
+        sync: false
       - key: S3_SECRET_KEY
-        value: not-configured
+        sync: false
       - key: S3_REGION
-        value: us-east-1
+        sync: false
       # Entered in the Render dashboard; the first start creates this administrator.
       - key: BEE_ADMIN_EMAIL
         sync: false
