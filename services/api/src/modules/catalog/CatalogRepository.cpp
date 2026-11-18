@@ -4,6 +4,8 @@
 
 namespace bee::catalog {
 Json::Value Repository::list(const Filter& f,bool admin) const {
+    // Drogon sends int parameters as 4-byte binary without a type; untyped LIMIT/OFFSET
+    // would be inferred as bigint and rejected, hence the explicit integer casts.
     const auto rows=db_->execSqlSync(R"SQL(
       WITH filtered AS (
         SELECT p.id,p.created_at,t.name,min(v.price_minor) AS price
@@ -20,7 +22,7 @@ Json::Value Repository::list(const Filter& f,bool admin) const {
           CASE WHEN $8='price_asc' THEN price END ASC,
           CASE WHEN $8='price_desc' THEN price END DESC,
           CASE WHEN $8='name' THEN name END ASC,
-          created_at DESC,id LIMIT $9 OFFSET $10
+          created_at DESC,id LIMIT $9::integer OFFSET $10::integer
       )
       SELECT jsonb_build_object('items',COALESCE((SELECT jsonb_agg(catalog_document(id)) FROM page),'[]'),
         'total',(SELECT count(*) FROM filtered),'page',$11::integer,'limit',$9::integer)::text AS document
