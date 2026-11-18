@@ -313,6 +313,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get customer checkout details and shipping calculation */
+        get: operations["getCheckout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List orders placed by the signed-in customer */
+        get: operations["listCustomerOrders"];
+        put?: never;
+        /** Place an order from the current cart */
+        post: operations["placeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get details of an order */
+        get: operations["getCustomerOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a new order */
+        post: operations["cancelCustomerOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/media": {
         parameters: {
             query?: never;
@@ -400,6 +469,99 @@ export interface components {
             /** @enum {string} */
             currency: "MDL";
             available: number;
+        };
+        PlaceOrderRequest: {
+            /** @enum {string} */
+            deliveryMethod: "pickup" | "courier" | "post";
+            recipientName: string;
+            phone: string;
+            /** Format: uuid */
+            warehouseId?: string;
+            locality?: string;
+            address?: string;
+            postalCode?: string;
+            comment?: string;
+        };
+        Checkout: {
+            cart: components["schemas"]["CustomerCart"];
+            itemsTotalMinor: number;
+            courierPriceMinor: number | null;
+            warehouses: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                ready: boolean;
+            }[];
+        };
+        OrderItem: {
+            /** Format: uuid */
+            variantId: string;
+            productSlug: string;
+            sku: string;
+            name: string;
+            variantName: string;
+            unitPriceMinor: number;
+            quantity: number;
+        };
+        Order: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            status: "new" | "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @enum {string} */
+            deliveryMethod: "pickup" | "courier" | "post";
+            warehouse: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
+            recipientName: string;
+            phone: string;
+            locality: string | null;
+            address: string | null;
+            postalCode: string | null;
+            comment: string | null;
+            itemsTotalMinor: number;
+            deliveryPriceMinor: number | null;
+            totalMinor: number | null;
+            /** @enum {string} */
+            currency: "MDL";
+            /** @enum {string} */
+            paymentMethod: "on_delivery";
+            trackingNumber: string | null;
+            items: components["schemas"]["OrderItem"][];
+            history: {
+                /** @enum {string} */
+                status: "new" | "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+                /** Format: date-time */
+                at: string;
+            }[];
+            replayed?: boolean;
+        };
+        OrderSummary: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            status: "new" | "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            deliveryMethod: "pickup" | "courier" | "post";
+            itemsTotalMinor: number;
+            deliveryPriceMinor: number | null;
+            totalMinor: number | null;
+            /** @enum {string} */
+            currency: "MDL";
+            quantity: number;
+        };
+        OrderList: {
+            items: components["schemas"]["OrderSummary"][];
         };
         Product: {
             /** Format: uuid */
@@ -1118,6 +1280,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerCart"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    getCheckout: {
+        parameters: {
+            query?: {
+                locale?: "ru" | "ro";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prepared checkout document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Checkout"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    listCustomerOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of customer orders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderList"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    placeOrder: {
+        parameters: {
+            query?: {
+                locale?: "ru" | "ro";
+            };
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Order idempotently replayed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            /** @description Order placed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    getCustomerOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    cancelCustomerOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancelled order details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
                 };
             };
             default: components["responses"]["ApiError"];

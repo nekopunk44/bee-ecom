@@ -20,6 +20,8 @@ tags:
     description: Customer and staff sessions with server-side permissions.
   - name: Cart
     description: Owner-scoped customer cart with current prices and availability.
+  - name: Orders
+    description: Customer checkout and order operations.
   - name: Health
     description: Process liveness and dependency readiness.
 paths:
@@ -288,6 +290,119 @@ paths:
               schema: { $ref: '#/components/schemas/CustomerCart' }
         default:
           $ref: '#/components/responses/ApiError'
+  /api/v1/checkout:
+    get:
+      operationId: getCheckout
+      summary: Get customer checkout details and shipping calculation
+      tags: [Orders]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: query
+          name: locale
+          schema: { type: string, enum: [ru, ro], default: ru }
+      responses:
+        '200':
+          description: Prepared checkout document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checkout'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/orders:
+    get:
+      operationId: listCustomerOrders
+      summary: List orders placed by the signed-in customer
+      tags: [Orders]
+      security:
+        - CustomerSession: []
+      responses:
+        '200':
+          description: List of customer orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderList'
+        default:
+          $ref: '#/components/responses/ApiError'
+    post:
+      operationId: placeOrder
+      summary: Place an order from the current cart
+      tags: [Orders]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: locale
+          schema: { type: string, enum: [ru, ro], default: ru }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '200':
+          description: Order idempotently replayed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/orders/{orderId}:
+    get:
+      operationId: getCustomerOrder
+      summary: Get details of an order
+      tags: [Orders]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /api/v1/orders/{orderId}/cancel:
+    post:
+      operationId: cancelCustomerOrder
+      summary: Cancel a new order
+      tags: [Orders]
+      security:
+        - CustomerSession: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Cancelled order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        default:
+          $ref: '#/components/responses/ApiError'
   /api/v1/admin/media:
     $ref: './catalog.json#/endpoints/upload'
   /api/v1/media/{id}/{filename}:
@@ -398,6 +513,257 @@ components:
         unitPriceMinor: { type: integer, minimum: 0 }
         currency: { type: string, enum: [MDL] }
         available: { type: integer, minimum: 0 }
+    PlaceOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [deliveryMethod, recipientName, phone]
+      properties:
+        deliveryMethod:
+          type: string
+          enum: [pickup, courier, post]
+        recipientName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        phone:
+          type: string
+          maxLength: 32
+        warehouseId:
+          type: string
+          format: uuid
+        locality:
+          type: string
+          maxLength: 120
+        address:
+          type: string
+          maxLength: 240
+        postalCode:
+          type: string
+          maxLength: 16
+        comment:
+          type: string
+          maxLength: 500
+    Checkout:
+      type: object
+      additionalProperties: false
+      required: [cart, itemsTotalMinor, courierPriceMinor, warehouses]
+      properties:
+        cart:
+          $ref: '#/components/schemas/CustomerCart'
+        itemsTotalMinor:
+          type: integer
+          minimum: 0
+        courierPriceMinor:
+          type: integer
+          nullable: true
+        warehouses:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, name, ready]
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              ready:
+                type: boolean
+    OrderItem:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          variantId,
+          productSlug,
+          sku,
+          name,
+          variantName,
+          unitPriceMinor,
+          quantity,
+        ]
+      properties:
+        variantId:
+          type: string
+          format: uuid
+        productSlug:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        variantName:
+          type: string
+        unitPriceMinor:
+          type: integer
+          minimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+    Order:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          number,
+          status,
+          createdAt,
+          updatedAt,
+          deliveryMethod,
+          warehouse,
+          recipientName,
+          phone,
+          locality,
+          address,
+          postalCode,
+          comment,
+          itemsTotalMinor,
+          deliveryPriceMinor,
+          totalMinor,
+          currency,
+          paymentMethod,
+          trackingNumber,
+          items,
+          history,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        status:
+          type: string
+          enum: [new, confirmed, ready, shipped, completed, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deliveryMethod:
+          type: string
+          enum: [pickup, courier, post]
+        warehouse:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        recipientName:
+          type: string
+        phone:
+          type: string
+        locality:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        itemsTotalMinor:
+          type: integer
+        deliveryPriceMinor:
+          type: integer
+          nullable: true
+        totalMinor:
+          type: integer
+          nullable: true
+        currency:
+          type: string
+          enum: [MDL]
+        paymentMethod:
+          type: string
+          enum: [on_delivery]
+        trackingNumber:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        history:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [status, at]
+            properties:
+              status:
+                type: string
+                enum: [new, confirmed, ready, shipped, completed, cancelled]
+              at:
+                type: string
+                format: date-time
+        replayed:
+          type: boolean
+    OrderSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          number,
+          status,
+          createdAt,
+          deliveryMethod,
+          itemsTotalMinor,
+          deliveryPriceMinor,
+          totalMinor,
+          currency,
+          quantity,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        status:
+          type: string
+          enum: [new, confirmed, ready, shipped, completed, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        deliveryMethod:
+          type: string
+          enum: [pickup, courier, post]
+        itemsTotalMinor:
+          type: integer
+        deliveryPriceMinor:
+          type: integer
+          nullable: true
+        totalMinor:
+          type: integer
+          nullable: true
+        currency:
+          type: string
+          enum: [MDL]
+        quantity:
+          type: integer
+    OrderList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OrderSummary'
     Product:
       $ref: './catalog.json#/schemas/Product'
     ProductDraft:
