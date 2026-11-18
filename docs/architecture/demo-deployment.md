@@ -38,7 +38,8 @@ image from the Render dashboard (**Manual Deploy → Deploy latest reference**).
    (profile → Packages) and make sure its visibility is **Public**: Render pulls it
    without registry credentials.
 2. Render: **New → Blueprint**, repository `nekopunk44/bee-ecom`. Enter
-   `BEE_ADMIN_EMAIL` and `BEE_ADMIN_PASSWORD` (12–256 characters) and apply.
+   `BEE_ADMIN_EMAIL`, `BEE_ADMIN_PASSWORD` (12–256 characters) and the `S3_*`
+   values from [media storage](#media-storage-backblaze-b2), then apply.
    `https://bee-ecom-api.onrender.com/api/v1/health/ready` answers `ready` when the
    database and Key Value are reachable.
 3. Optional: copy the deploy hook of `bee-ecom-api` (Settings → Deploy Hook) into the
@@ -54,6 +55,32 @@ image from the Render dashboard (**Manual Deploy → Deploy latest reference**).
 If Vercel or Render assigns other domains, update the rewrite destinations in
 `apps/*/vercel.json` and `STOREFRONT_ORIGIN`/`ADMIN_ORIGIN` in Render.
 
+## Media storage (Backblaze B2)
+
+The bucket stays private: browsers receive images from `/api/v1/media/...`, and only
+the API reads and writes objects, with path-style S3 requests signed by curl.
+
+1. Create a Backblaze account with the **EU Central** region; the region is chosen at
+   sign-up and cannot be changed later.
+2. **Buckets → Create a Bucket**: a globally unique lowercase name (letters, digits,
+   hyphens), **Private**. The bucket page shows the S3 endpoint, for example
+   `s3.eu-central-003.backblazeb2.com`.
+3. **Application Keys → Add a New Application Key**: access to this bucket only,
+   **Read and Write**. The application key is shown once.
+4. In Render, `bee-ecom-api` → Environment:
+
+   | Variable        | Value                                        |
+   | --------------- | -------------------------------------------- |
+   | `S3_ENDPOINT`   | `https://` + the endpoint, no trailing `/`   |
+   | `S3_REGION`     | the region part of it, e.g. `eu-central-003` |
+   | `S3_BUCKET`     | the bucket name                              |
+   | `S3_ACCESS_KEY` | keyID                                        |
+   | `S3_SECRET_KEY` | applicationKey                               |
+
+The S3 variables are `sync: false` in `render.yaml`, so Blueprint syncs keep the
+dashboard values. A new Blueprint asks for them; without storage, placeholders let
+the API start and uploads answer 503.
+
 ## Limitations
 
 - `APP_ENV=development`: `staging` requires `verify-full` TLS to PostgreSQL, while the
@@ -63,8 +90,6 @@ If Vercel or Render assigns other domains, update the rewrite destinations in
   one role.
 - No worker: free Render plans have no background workers, so expired cart
   reservations are not released and outbox events wait.
-- No media storage: `S3_*` hold placeholders and image uploads answer 503. An
-  S3-compatible bucket (for example Cloudflare R2) can be configured in Render later.
 - The free API sleeps after 15 minutes without traffic and wakes in about a minute.
   The storefront waits 3–5 seconds for the API, so the first page after a pause may
   show that the catalog is unavailable.
