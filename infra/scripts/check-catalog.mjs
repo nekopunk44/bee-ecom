@@ -276,6 +276,97 @@ assert.deepEqual(
   ).json(),
   { items: [] },
 );
+// Покупатель оформляет заказ из корзины: резерв, повтор ключа и отмена.
+await request(
+  '/cart/items?locale=ru',
+  200,
+  'POST',
+  { variantId: published.variants[0].id, quantity: 2 },
+  storefront,
+);
+const checkoutDoc = await (
+  await request('/checkout?locale=ru', 200, 'GET', undefined, storefront)
+).json();
+assert.equal(checkoutDoc.itemsTotalMinor, 24690);
+assert.ok(
+  checkoutDoc.warehouses.some(
+    (item) => item.id === warehouse.id && item.ready === true,
+  ),
+);
+const beforeOrder = await (
+  await request(`/inventory/products/${published.variants[0].id}`, 200)
+).json();
+const orderDetails = {
+  deliveryMethod: 'courier',
+  recipientName: 'CI Buyer',
+  phone: '069123456',
+  address: 'str. Test 1, ap. 2',
+};
+const orderKey = randomUUID();
+const order = await (
+  await request('/orders?locale=ru', 201, 'POST', orderDetails, {
+    ...storefront,
+    'Idempotency-Key': orderKey,
+  })
+).json();
+assert.equal(order.status, 'new');
+assert.match(order.number, /^B-\d+$/);
+assert.equal(order.phone, '+37369123456');
+assert.equal(order.items[0].quantity, 2);
+assert.deepEqual(
+  await (
+    await request('/cart?locale=ru', 200, 'GET', undefined, storefront)
+  ).json(),
+  { items: [] },
+);
+const replayedOrder = await (
+  await request('/orders?locale=ru', 200, 'POST', orderDetails, {
+    ...storefront,
+    'Idempotency-Key': orderKey,
+  })
+).json();
+assert.equal(replayedOrder.id, order.id);
+assert.equal(replayedOrder.replayed, true);
+const conflicting = await request(
+  '/orders?locale=ru',
+  409,
+  'POST',
+  { ...orderDetails, recipientName: 'CI Another Buyer' },
+  { ...storefront, 'Idempotency-Key': orderKey },
+);
+assert.equal((await conflicting.json()).error.code, 'IDEMPOTENCY_CONFLICT');
+const duringOrder = await (
+  await request(`/inventory/products/${published.variants[0].id}`, 200)
+).json();
+assert.equal(duringOrder.available, beforeOrder.available - 2);
+const orders = await (
+  await request('/orders', 200, 'GET', undefined, storefront)
+).json();
+assert.ok(orders.items.some((item) => item.id === order.id));
+const cancelled = await (
+  await request(
+    `/orders/${order.id}/cancel`,
+    200,
+    'POST',
+    undefined,
+    storefront,
+  )
+).json();
+assert.equal(cancelled.status, 'cancelled');
+const cancelledAgain = await (
+  await request(
+    `/orders/${order.id}/cancel`,
+    200,
+    'POST',
+    undefined,
+    storefront,
+  )
+).json();
+assert.equal(cancelledAgain.status, 'cancelled');
+const afterCancel = await (
+  await request(`/inventory/products/${published.variants[0].id}`, 200)
+).json();
+assert.equal(afterCancel.available, beforeOrder.available);
 // Покупатель вошёл, но прав на управление каталогом у него нет: 403, а не 401.
 const customerOnAdmin = await request(
   '/admin/products',
