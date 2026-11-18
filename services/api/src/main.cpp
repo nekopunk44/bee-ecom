@@ -6,6 +6,7 @@
 #include "modules/media/Media.hpp"
 #include "modules/inventory/Inventory.hpp"
 #include "modules/cart/Cart.hpp"
+#include "modules/orders/Orders.hpp"
 #include <sodium.h>
 #include <curl/curl.h>
 #include <vips/vips.h>
@@ -51,6 +52,7 @@ int main() {
         bee::media::registerRoutes(std::make_shared<bee::media::Service>(postgres,std::make_shared<bee::media::S3Storage>()),auth,executor);
         bee::inventory::registerRoutes(std::make_shared<bee::inventory::Service>(postgres),auth,executor);
         bee::cart::registerRoutes(std::make_shared<bee::cart::Service>(postgres),auth,executor);
+        bee::orders::registerRoutes(std::make_shared<bee::orders::Service>(postgres),auth,executor);
         bee::health::registerRoutes(std::make_shared<bee::health::Service>(
             std::make_shared<bee::health::Repository>(postgres, redis)));
         drogon::app().addListener("0.0.0.0", config.port)

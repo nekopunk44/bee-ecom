@@ -27,6 +27,7 @@ add_library(bee_application
   services/api/src/modules/media/S3Storage.cpp
   services/api/src/modules/inventory/Inventory.cpp
   services/api/src/modules/cart/Cart.cpp
+  services/api/src/modules/orders/Orders.cpp
 )
 target_link_libraries(bee_application PUBLIC bee_platform PkgConfig::SODIUM PkgConfig::VIPS CURL::libcurl)
 target_compile_options(bee_application PRIVATE -Wall -Wextra -Wpedantic)
