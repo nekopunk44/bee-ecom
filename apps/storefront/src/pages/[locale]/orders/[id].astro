@@ -1,0 +1,26 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import StoreHeader from '../../../components/StoreHeader.astro';
+import StoreFooter from '../../../components/StoreFooter.astro';
+import PageTop from '../../../components/PageTop.astro';
+import OrderWorkspace from '../../../components/OrderWorkspace.svelte';
+import { isLocale } from '../../../i18n';
+const { locale, id } = Astro.params;
+if (!isLocale(locale)) return Astro.redirect('/404');
+// В адресе — UUID заказа; другую строку API всё равно не найдёт.
+if (!id || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id))
+  return Astro.redirect('/404');
+const placed = Astro.url.searchParams.get('placed') === '1';
+const title = { ru: 'Заказ', ro: 'Comanda' }[locale];
+---
+
+<Layout locale={locale} title={`${title} — Bee`} description={title} noindex>
+  <StoreHeader locale={locale} />
+  <main id="main">
+    <PageTop title={title} />
+    <div class="container">
+      <OrderWorkspace client:load locale={locale} orderId={id} {placed} />
+    </div>
+  </main>
+  <StoreFooter locale={locale} />
+</Layout>
