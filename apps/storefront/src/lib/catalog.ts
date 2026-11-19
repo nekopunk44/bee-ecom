@@ -41,7 +41,7 @@ export const catalogText = {
     price: 'Цена',
     noImage: 'Фото готовится',
     orderNotice:
-      'Товар можно отложить в корзину. Оформление заказа и доставка скоро появятся.',
+      'Положите товар в корзину и оформите заказ: курьер, самовывоз или почта, оплата при получении.',
     back: 'Вернуться в каталог',
     missing: 'Товар не найден',
   },
@@ -76,7 +76,7 @@ export const catalogText = {
     price: 'Preț',
     noImage: 'Fotografie în pregătire',
     orderNotice:
-      'Produsul poate fi adăugat în coș. Plasarea comenzii și livrarea vor fi disponibile în curând.',
+      'Adaugă produsul în coș și plasează comanda: curier, ridicare sau poștă, plata la primire.',
     back: 'Înapoi la catalog',
     missing: 'Produsul nu a fost găsit',
   },
