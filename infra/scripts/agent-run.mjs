@@ -4,6 +4,7 @@
 //
 //   npm run agent:ready                    issues an agent can take right now
 //   npm run agent:run -- <issue> [--tool opencode|kilo|agy] [--model <id>] [--agent <role>]
+//                       [--base <branch>]        start from an unmerged branch instead of main
 //                       [--review-file <file>]   send review findings back to the agent
 import { execFileSync, spawn } from 'node:child_process';
 import {
@@ -123,10 +124,11 @@ const promptFor = (
   number,
   title,
   branch,
+  base,
 ) => `You are an autonomous coding agent working on GitHub issue #${number} ("${title}") of this repository, inside your own git worktree on branch ${branch}.
 
 1. Read AGENTS.md and run \`gh issue view ${number}\`.
-2. If \`git status\` shows uncommitted changes or the branch already has commits ahead of origin/main, a previous agent started this task: continue from that work, do not start over.
+2. If \`git status\` shows uncommitted changes or the branch already has commits ahead of , a previous agent started this task: continue from that work, do not start over.
 3. Implement the issue exactly within its scope. Work without asking questions; if you are truly blocked, comment on the issue with \`gh issue comment ${number}\` and stop.
 4. Keep every file you create inside this folder. Temporary files go to .tmp/ and must be deleted before you finish (leave .tmp/agent-prompt*.md alone).
 5. Run \`npm run format\`; \`npm run verify\` must pass.
@@ -344,7 +346,9 @@ const runIssue = async (number, options) => {
   const task = existing ?? `${number}-${slugify(issue.title)}`;
   const cwd = path.join(agentsDir, task);
   if (!existsSync(cwd)) {
-    execFileSync('git', ['fetch', 'origin', 'main'], { stdio: 'inherit' });
+    execFileSync('git', ['fetch', 'origin', options.base], {
+      stdio: 'inherit',
+    });
     execFileSync(
       'node',
       [
@@ -352,7 +356,7 @@ const runIssue = async (number, options) => {
         'new',
         task,
         '--from',
-        'origin/main',
+        `origin/${options.base}`,
       ],
       { stdio: 'inherit' },
     );
@@ -366,7 +370,7 @@ const runIssue = async (number, options) => {
   mkdirSync(logsDir, { recursive: true });
   const logFile = path.join(logsDir, `${task}.log`);
   const prompt =
-    promptFor(number, issue.title, `agent/${task}`) +
+    promptFor(number, issue.title, `agent/${task}`, `origin/${options.base}`) +
     (options.review
       ? `\n## Review findings to fix\n\nThe owner reviewed your work on this branch. Fix exactly these points, commit, and report what you changed:\n\n${options.review}\n`
       : '');
@@ -416,7 +420,7 @@ const runIssue = async (number, options) => {
     if (result === 'done') {
       const commits = execFileSync(
         'git',
-        ['log', '--oneline', 'origin/main..HEAD'],
+        ['log', '--oneline', `origin/${options.base}..HEAD`],
         { cwd, encoding: 'utf8' },
       );
       const dirty = execFileSync('git', ['status', '--short'], {
@@ -455,6 +459,9 @@ if (command === 'ready') {
     tool: option('tool'),
     model: option('model'),
     agent: option('agent'),
+    // A branch the new worktree starts from instead of main, for example a
+    // pull request the task builds on that is not merged yet.
+    base: option('base') ?? 'main',
     review: option('review-file')
       ? readFileSync(option('review-file'), 'utf8')
       : option('review'),
@@ -463,6 +470,6 @@ if (command === 'ready') {
   fail(
     'Usage:\n' +
       '  npm run agent:ready\n' +
-      '  npm run agent:run -- <issue> [--tool opencode|kilo|agy] [--model <id>] [--agent <role>] [--review-file <file>]',
+      '  npm run agent:run -- <issue> [--tool opencode|kilo|agy] [--model <id>] [--agent <role>] [--base <branch>] [--review-file <file>]',
   );
 }
