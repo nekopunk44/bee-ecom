@@ -1,4 +1,4 @@
-# Current implementation status — 2026-11-18
+# Current implementation status — 2026-11-22
 
 The repository contains the foundation, catalog, and commerce increments for
 inventory, cart, and orders. The public storefront and admin catalog are usable;
@@ -35,7 +35,12 @@ The storefront uses them on `/[locale]/checkout/` (courier, pickup from a
 warehouse that holds the whole cart, or post; one idempotency key per attempt),
 `/[locale]/orders/` and `/[locale]/orders/<id>/` with cancellation. Browser
 tests cover these pages against a mocked API; the CI stack check places, replays
-and cancels a real order against the API and PostgreSQL.
+and cancels a real order against the API and PostgreSQL. A second stack check,
+`infra/scripts/check-concurrency.mjs`, sends competing requests at once: eight
+buyers for the last three units, a double submit, parallel retries with one
+idempotency key, a customer cancelling while a manager confirms, and two managers
+confirming together. It asserts that stock is never oversold or partly reserved
+and that reserved stock always equals what open orders hold.
 
 Staff order management is added by migration `0007_order_management.sql`. The
 admin «Заказы» tab uses three endpoints: `GET /api/v1/admin/orders` (list with
@@ -52,6 +57,5 @@ declined Linux/WSL/Docker installation. Native API builds and real PostgreSQL
 concurrency/container checks must therefore run in CI or another equipped
 host. A successful SQL migration test is not a substitute for those checks.
 
-Next work: an end-to-end checkout check against the real stack in CI, then
-payment and delivery adapters. Do not present those flows as implemented until their API, frontend
+Next work: payment and delivery adapters. Do not present those flows as implemented until their API, frontend
 and integration acceptance checks pass.

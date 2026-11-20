@@ -16,7 +16,8 @@
    and database reservation/release/expiry primitives with a worker are
    implemented, as are customer accounts and the cart (API and storefront UI).
    Checkout, order history and cancellation (API and storefront UI) are implemented; staff order management (admin «Заказы» tab with list, detail and status transitions) is implemented; payment and delivery adapters remain. Acceptance requires concurrent buyers
-   against real PostgreSQL and idempotent end-to-end checkout.
+   against real PostgreSQL and idempotent end-to-end checkout; both run in the CI
+   stack checks (`check-catalog.mjs`, `check-concurrency.mjs`).
 4. **Distinctive features:** compatibility, budget-aware apiary configurator,
    explainable recommendations, favorites, comparison and warehouse views.
 5. **Hardening:** rate limits, 2FA, audit coverage, Prometheus/Grafana, real-user
