@@ -4,7 +4,8 @@ The repository contains the foundation, catalog, and commerce increments for
 inventory, cart, and orders. The public storefront and admin catalog are usable;
 the admin also supports warehouse setup and audited, idempotent stock
 adjustments. The storefront supports customer registration, login and logout
-with server-side sessions, and a persistent cart.
+with server-side sessions, and a persistent cart. Customers can also place, list
+and cancel orders through the API.
 
 The inventory increment is migration `0004_inventory.sql`. It adds warehouse
 balances, an append-only movement history, inventory permissions, the atomic
@@ -23,8 +24,8 @@ authenticated `/api/v1/cart`, `/api/v1/cart/items` and
 `/api/v1/cart/items/{variantId}` endpoints, and the storefront cart page
 (`apps/storefront/src/pages/[locale]/cart.astro`).
 
-Orders are described from migration `0006_orders.sql` and the contract:
-`checkout_document`, `order_place` (courier, pickup and post delivery, an
+Orders come from migration `0006_orders.sql`: `checkout_document` prepares the
+checkout, `order_place` places an order (courier, pickup and post delivery, an
 idempotency key, stock reserved in the same transaction as the order, the cart
 emptied), the customer's order history and cancellation that releases stock,
 exposed through `/api/v1/checkout`, `/api/v1/orders`, `/api/v1/orders/{orderId}`
