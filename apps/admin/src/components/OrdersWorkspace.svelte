@@ -111,10 +111,13 @@
     tracking = next.trackingNumber ?? '';
   }
 
-  async function open(id: string) {
+  // keepMessage: после конфликта перезагружаем заказ, но объяснение оставляем на экране.
+  async function open(id: string, keepMessage = false) {
     busy = true;
-    error = '';
-    notice = '';
+    if (!keepMessage) {
+      error = '';
+      notice = '';
+    }
     try {
       const result = await api.GET('/api/v1/admin/orders/{orderId}', {
         params: { path: { orderId: id } },
@@ -176,7 +179,7 @@
         error = errorText(result.error.error.code);
         // Кто-то успел изменить заказ: показываем актуальное состояние.
         if (result.error.error.code === 'ORDER_STATUS_CHANGED')
-          await open(order.id);
+          await open(order.id, true);
         return;
       }
       prepare(result.data);
