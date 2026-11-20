@@ -21,6 +21,7 @@ const allowIndex = process.env.ENABLE_INDEXING === 'true' && !noindex;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline src="/view-transition.js"></script>
     <meta name="description" content={description} />
     <meta
       name="robots"
@@ -44,6 +45,49 @@ const allowIndex = process.env.ENABLE_INDEXING === 'true' && !noindex;
   </head>
   <body>
     <slot />
+    <script>
+      /* Запоминаем, откуда начался переход: из этой точки откроется каталог
+         (public/view-transition.js на следующей странице). */
+      function remember(x: number, y: number) {
+        try {
+          sessionStorage.setItem(
+            'bee:transition',
+            JSON.stringify({
+              x: Math.round((x / innerWidth) * 100),
+              y: Math.round((y / innerHeight) * 100),
+              path: location.pathname,
+              at: Date.now(),
+            }),
+          );
+        } catch {
+          // Без sessionStorage переход просто обычный.
+        }
+      }
+      function center(element: Element) {
+        const rect = element.getBoundingClientRect();
+        return [
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        ] as const;
+      }
+      document.addEventListener('click', (event) => {
+        const link =
+          event.target instanceof Element
+            ? event.target.closest<HTMLAnchorElement>('a[href]')
+            : null;
+        if (!link || link.origin !== location.origin) return;
+        // С клавиатуры координат нет: берём середину ссылки.
+        const [x, y] =
+          event.clientX || event.clientY
+            ? [event.clientX, event.clientY]
+            : center(link);
+        remember(x, y);
+      });
+      document.addEventListener('submit', (event) => {
+        if (event.target instanceof HTMLFormElement)
+          remember(...center(event.target));
+      });
+    </script>
   </body>
 </html>
 <style is:global>

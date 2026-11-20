@@ -18,16 +18,20 @@ test('storefront remains usable without JavaScript and shares locale routes', as
   await page.goto('http://127.0.0.1:4321/');
   await expect(page).toHaveURL(/\/ru\/$/);
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    'Хорошая пасека',
+    'Пасека начинается',
   );
   await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
   await page.getByRole('link', { name: 'RO', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    'O stupină bună',
+    'Stupina începe',
   );
-  // Главная не держит встроенных скриптов: только отложенный модуль 3D-истории.
-  await expect(page.locator('script:not([type="module"][src])')).toHaveCount(0);
+  // Встроенных скриптов нет (CSP): только файлы с этого же сайта.
+  await expect(page.locator('script:not([src])')).toHaveCount(0);
+  for (const src of await page
+    .locator('script[src]')
+    .evaluateAll((scripts) => scripts.map((s) => s.getAttribute('src') ?? '')))
+    expect(src).toMatch(/^\//);
   await page.screenshot({
     path: testInfo.outputPath('storefront-desktop.png'),
     fullPage: true,

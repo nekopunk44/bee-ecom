@@ -56,6 +56,9 @@ const { labels } = Astro.props;
           stage,
           canvas,
           labels: parts,
+          frameSteps: [
+            ...story.querySelectorAll<HTMLElement>('[data-frame-step]'),
+          ],
           onLost: end,
         });
         if (!stop) story.classList.remove('story--live');

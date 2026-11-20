@@ -60,9 +60,9 @@ function cartServer(page: Page) {
   ]).then(() => items);
 }
 
-/** Сота перелетает к корзину и убирается сама: живёт она недолго. */
-function flyingHoneycomb(page: Page) {
-  return page.locator('body > div[aria-hidden="true"]');
+/** Пчела летит к корзине и убирается сама: живёт она недолго. */
+function flyingBee(page: Page) {
+  return page.locator('body > .flying-bee[aria-hidden="true"]');
 }
 
 /** Снимок computed style: expect.poll дождётся нужного значения. */
@@ -82,7 +82,7 @@ test('reduced motion keeps the still hero picture instead of the 3D story', asyn
   const { context, page } = await open(browser, { reducedMotion: 'reduce' });
   await page.goto(home);
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    'Хорошая пасека',
+    'Пасека начинается',
   );
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-story]')).not.toHaveClass(/story--live/);
@@ -146,6 +146,10 @@ test('the home page tells the hive story in 3D while scrolling', async ({
       parts.first().evaluate((part) => Number(getComputedStyle(part).opacity)),
     )
     .toBeGreaterThan(0.9);
+  // Рядом с разобранным ульем три системы ульев, каждая ведёт в каталог.
+  const systems = page.locator('.system');
+  await expect(systems).toHaveCount(3);
+  await expect(systems.first()).toHaveAttribute('href', /catalog\/\?q=/);
   // В конце истории поиск по-прежнему работает поверх сот.
   await page.getByLabel('Что ищете').scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: 'Найти' })).toBeVisible();
@@ -190,7 +194,7 @@ test('every reveal block becomes visible after it is scrolled into view', async 
   }
 });
 
-test('reduced motion skips the flying honeycomb on add to cart', async ({
+test('reduced motion skips the flying bee on add to cart', async ({
   browser,
 }) => {
   const { context, page } = await open(browser, { reducedMotion: 'reduce' });
@@ -200,22 +204,88 @@ test('reduced motion skips the flying honeycomb on add to cart', async ({
   await page.getByRole('button', { name: 'В корзину' }).click();
   await expect(page.getByRole('button', { name: 'Добавлено' })).toBeVisible();
   await expect.poll(() => items.get(variant.id)).toBe(1);
-  await expect(flyingHoneycomb(page)).toHaveCount(0);
+  await expect(flyingBee(page)).toHaveCount(0);
   await context.close();
 });
 
-test('without reduced motion the flying honeycomb flies for a moment', async ({
+test('without reduced motion a bee flies to the cart for a moment', async ({
   browser,
 }) => {
   const { context, page } = await open(browser);
   const items = await cartServer(page);
   await page.goto(`${storefront}/ru/catalog/${product.slug}/`);
   await hydrated(page);
+  // Пчела живёт меньше секунды: ждём её появления с самого нажатия, а не опросом.
+  const flight = flyingBee(page).waitFor({ state: 'attached', timeout: 3000 });
   await page.getByRole('button', { name: 'В корзину' }).click();
-  await expect
-    .poll(() => flyingHoneycomb(page).count(), { timeout: 2000 })
-    .toBe(1);
+  await flight;
   await expect(page.getByRole('button', { name: 'Добавлено' })).toBeVisible();
   await expect.poll(() => items.get(variant.id)).toBe(1);
+  await context.close();
+});
+
+test('catalog cards tilt toward the pointer unless motion is reduced', async ({
+  browser,
+}) => {
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    const { context, page } = await open(browser, { reducedMotion });
+    await page.goto(`${storefront}/ru/catalog/`);
+    const picture = page.locator('[data-tilt]').first();
+    await picture.scrollIntoViewIfNeeded();
+    const box = await picture.boundingBox();
+    if (!box) throw new Error('product card is not visible');
+    // Скрипт наклона может загрузиться позже первого движения: каждая попытка двигает курсор.
+    const tilt = async () => {
+      await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.2);
+      await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.15);
+      return picture.evaluate((el) =>
+        (el as HTMLElement).style.getPropertyValue('--tilt-y'),
+      );
+    };
+    if (reducedMotion === 'reduce') {
+      await tilt();
+      await page.waitForTimeout(500);
+      expect(await tilt()).toBe('');
+    } else {
+      await expect.poll(tilt).toMatch(/^\d/);
+    }
+    await context.close();
+  }
+});
+
+test('an empty search shows living honeycomb instead of a bare message', async ({
+  browser,
+}) => {
+  const { context, page } = await open(browser);
+  await page.goto(
+    `${storefront}/ru/catalog/?q=${encodeURIComponent('ничего-такого-нет')}`,
+  );
+  await expect(page.getByText('Товары не найдены')).toBeVisible();
+  const comb = page.locator('canvas[data-comb-field]');
+  await expect(comb).toBeVisible();
+  const box = await comb.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThan(100);
+  await context.close();
+});
+
+test('the catalog opens with a honeycomb cell from the point of the click', async ({
+  browser,
+}) => {
+  const { context, page } = await open(browser);
+  await page.goto(home);
+  const button = page.getByRole('link', { name: 'Открыть каталог' });
+  await button.click();
+  await expect(page).toHaveURL(/\/ru\/catalog\/$/);
+  const root = page.locator('html');
+  await expect(root).toHaveAttribute('data-transition', 'catalog');
+  const origin = await root.evaluate((html) =>
+    html.style.getPropertyValue('--vt-x'),
+  );
+  expect(origin).toMatch(/^\d+$/);
+  // Внутри каталога (поиск, фильтры) обычный переход, без соты.
+  await page.getByLabel('Поиск', { exact: true }).fill('улей');
+  await page.getByLabel('Поиск', { exact: true }).press('Enter');
+  await expect(page).toHaveURL(/q=/);
+  await expect(root).not.toHaveAttribute('data-transition', 'catalog');
   await context.close();
 });

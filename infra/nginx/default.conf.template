@@ -25,6 +25,7 @@ server {
     listen 80;
     server_name ${STOREFRONT_HOST};
     include /etc/nginx/bee/security.conf;
+    include /etc/nginx/bee/csp-storefront.conf;
     location = /edge-health { access_log off; return 200 'ok'; }
     location /api/ {
         include /etc/nginx/bee/proxy.conf;
@@ -39,6 +40,7 @@ server {
     listen 80;
     server_name ${ADMIN_HOST};
     include /etc/nginx/bee/security.conf;
+    include /etc/nginx/bee/csp-admin.conf;
     location /api/ {
         include /etc/nginx/bee/proxy.conf;
         proxy_pass http://bee_api;

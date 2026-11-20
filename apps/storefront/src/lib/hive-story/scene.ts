@@ -43,6 +43,8 @@ export type StoryOptions = {
   canvas: HTMLCanvasElement;
   /** Подписи частей улья в порядке: дно, корпус, магазин, потолок, крыша. */
   labels: HTMLElement[];
+  /** Шаги пути рамки: загораются по мере заливки сот. */
+  frameSteps: HTMLElement[];
   onLost: () => void;
 };
 
@@ -196,7 +198,7 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
       center: new Vector3(0, 5, 0),
       dir: new Vector3(0.18, 0.29, 1).normalize(),
       dist: wide ? 32 : 54,
-      anchor: wide ? [0.22, 0] : [-0.24, 0.42],
+      anchor: wide ? [0.25, 0] : [-0.24, 0.42],
     },
     {
       center: finalFrame,
@@ -323,6 +325,7 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
 
   let frameId = 0;
   let lastDepth = '';
+  let lastFill = '';
   let last = performance.now();
   const started = last;
   let stopped = false;
@@ -500,6 +503,19 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
     }
     cursorLight.intensity = 6 * dive;
     // Затемнение под текстом на сцене густеет вместе с приближением к сотам.
+    // Шаги пути рамки идут вместе с заливкой сот: пройденные, текущий и будущие.
+    const filled = fill.toFixed(2);
+    if (filled !== lastFill) {
+      options.story.style.setProperty('--frame-fill', filled);
+      const count = options.frameSteps.length;
+      const current =
+        fill <= 0 ? -1 : Math.min(count - 1, Math.floor(fill * count));
+      options.frameSteps.forEach((step, i) => {
+        step.dataset.state =
+          i < current ? 'done' : i === current ? 'current' : 'next';
+      });
+      lastFill = filled;
+    }
     const depth = dive.toFixed(2);
     if (depth !== lastDepth) {
       options.stage.style.setProperty('--story-dive', depth);

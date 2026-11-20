@@ -43,18 +43,18 @@ const catalog = `/${locale}/catalog/`;
         <div class="container hero-inner">
           <div class="hero-text">
             <p class="label rise">{t.label}</p>
-            <h1 id="hero-heading" class="display rise" style="--delay: 90ms">
+            <h1 id="hero-heading" class="display rise" data-step="1">
               {t.heading}
             </h1>
-            <p class="intro rise" style="--delay: 200ms">
+            <p class="intro rise" data-step="3">
               {t.intro}
             </p>
-            <div class="hero-actions rise" style="--delay: 300ms">
+            <div class="hero-actions rise" data-step="4">
               <a class="button honey" href={catalog}>
                 {t.open}
               </a>
             </div>
-            <div class="queries rise" style="--delay: 380ms">
+            <div class="queries rise" data-step="5">
               <span>{t.popular}:</span>
               <ul>
                 {t.queries.map((query) => (
@@ -66,13 +66,10 @@ const catalog = `/${locale}/catalog/`;
                 ))}
               </ul>
             </div>
-            <p class="notice rise" style="--delay: 460ms">
-              {t.notice}
-            </p>
           </div>
           <svg
             class="art rise"
-            style="--delay: 160ms"
+            data-step="2"
             width="520"
             height="500"
             viewBox="0 0 520 500"
@@ -173,18 +170,51 @@ const catalog = `/${locale}/catalog/`;
           </svg>
         </div>
       </div>
-      {[t.systems, t.frames].map((chapter) => (
+      {([t.systems, t.frames] as const).map((chapter) => (
         <div class="story-step chapter">
           <div class="container chapter-inner">
             <p class="label">{chapter.label}</p>
             <h2 class="display">{chapter.title}</h2>
             <p class="chapter-text">{chapter.text}</p>
-            <a
-              class="chapter-link"
-              href={`${catalog}?q=${encodeURIComponent(chapter.query)}`}
-            >
-              {chapter.link}
-            </a>
+            {'list' in chapter && (
+              <ul class="systems">
+                {chapter.list.map((system) => (
+                  <li data-reveal>
+                    <a
+                      class:list={['system', { model: system.model }]}
+                      href={`${catalog}?q=${encodeURIComponent(system.query)}`}
+                    >
+                      <span class="system-name">{system.name}</span>
+                      {system.lines.map((line) => (
+                        <span class="system-line">{line}</span>
+                      ))}
+                      {system.model && (
+                        <span class="system-tag">{chapter.model}</span>
+                      )}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {'steps' in chapter && (
+              <section class="frame-path" aria-labelledby="frame-path-heading">
+                <h3 id="frame-path-heading">{chapter.stepsTitle}</h3>
+                <ol class="frame-steps">
+                  {chapter.steps.map((step) => (
+                    <li data-frame-step>
+                      <a
+                        href={`${catalog}?q=${encodeURIComponent(step.query)}`}
+                      >
+                        {step.title}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+                <div class="frame-progress" aria-hidden="true">
+                  <span></span>
+                </div>
+              </section>
+            )}
             {chapter === t.frames && fresh.length > 0 && (
               <section class="fresh" aria-labelledby="fresh-heading">
                 <div class="fresh-head">
@@ -318,6 +348,144 @@ const catalog = `/${locale}/catalog/`;
     color: var(--color-honey);
     font-weight: 700;
   }
+  /* Системы ульев в главе о совместимости: та, что показана на модели, отмечена. */
+  .systems {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+    gap: var(--space-sm);
+    width: min(100%, 38rem);
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .system {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 0.3rem;
+    height: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--color-night-line);
+    border-radius: var(--radius-md);
+    background: rgb(42 39 32 / 0.88);
+    color: var(--color-night-text);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition:
+      transform var(--motion-normal) var(--ease-out),
+      border-color var(--motion-normal) var(--ease-out);
+  }
+  .system:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-honey);
+  }
+  .system.model {
+    border-color: var(--color-honey);
+  }
+  .system-name {
+    margin-bottom: 0.2rem;
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .system-tag {
+    justify-self: start;
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-honey);
+    color: var(--color-ink);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  /* Путь рамки за сезон: шаги загораются по мере того, как соты в 3D заливаются мёдом
+     (сцена ставит data-state и --frame-fill). Без 3D это просто четыре ссылки. */
+  .frame-path {
+    display: grid;
+    gap: var(--space-sm);
+    width: min(100%, 40rem);
+    margin-top: var(--space-sm);
+  }
+  .frame-path h3,
+  .fresh-head h3 {
+    margin: 0;
+    color: var(--color-night-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .frame-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+  .frame-steps a {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    height: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--color-night-line);
+    border-radius: var(--radius-md);
+    background: rgb(42 39 32 / 0.88);
+    color: #ffffff;
+    font-weight: 600;
+    line-height: 1.3;
+    text-decoration: none;
+    counter-increment: step;
+    transition:
+      transform var(--motion-normal) var(--ease-out),
+      border-color var(--motion-normal) var(--ease-out);
+  }
+  .frame-steps a::before {
+    content: counter(step);
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 2.15rem;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background: var(--color-night-line);
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    font-weight: 800;
+    transition: background var(--motion-normal) var(--ease-out);
+  }
+  .frame-steps a:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-honey);
+  }
+  [data-frame-step][data-state='done'] a::before,
+  [data-frame-step][data-state='current'] a::before {
+    background: var(--color-honey);
+    color: var(--color-ink);
+  }
+  [data-frame-step][data-state='current'] a {
+    border-color: var(--color-honey);
+  }
+  .frame-progress {
+    display: none;
+    height: 3px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--color-night-line);
+  }
+  .frame-progress span {
+    display: block;
+    height: 100%;
+    width: calc(var(--frame-fill, 0) * 100%);
+    background: var(--color-honey);
+  }
+  .story--live .frame-progress {
+    display: block;
+  }
   .fresh {
     display: grid;
     gap: var(--space-sm);
@@ -329,14 +497,6 @@ const catalog = `/${locale}/catalog/`;
     justify-content: space-between;
     align-items: baseline;
     gap: var(--space-md);
-  }
-  .fresh-head h3 {
-    margin: 0;
-    color: var(--color-night-muted);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
   .fresh-head a {
     color: #ffffff;
@@ -575,14 +735,6 @@ const catalog = `/${locale}/catalog/`;
   .queries a:hover {
     background: #ffffff;
     color: var(--color-ink);
-  }
-  .notice {
-    max-width: 36rem;
-    margin: var(--space-lg) 0 0;
-    padding-left: var(--space-md);
-    border-left: 3px solid var(--color-honey);
-    color: var(--color-night-muted);
-    font-size: var(--text-sm);
   }
   .art {
     flex: 1 1 22rem;

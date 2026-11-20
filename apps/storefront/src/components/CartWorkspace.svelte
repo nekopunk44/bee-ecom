@@ -7,6 +7,7 @@
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
   import { formatMoney as money } from '../lib/money';
+  import CombField from './CombField.svelte';
   let { locale }: { locale: Locale } = $props();
   type Cart = components['schemas']['CustomerCart'];
   type Item = components['schemas']['CustomerCartItem'];
@@ -176,6 +177,7 @@
     </div>
   {:else if !cart?.items.length}
     <div class="state">
+      <CombField />
       <p>{copy.empty}</p>
       <a class="button honey" href={`/${locale}/catalog/`}>{copy.browse}</a>
     </div>

@@ -41,6 +41,62 @@
   }
 }
 
+/* Вход в каталог с другой страницы: каталог раскрывается шестигранной сотой из точки,
+   куда нажали (--vt-x, --vt-y и data-transition ставит public/view-transition.js),
+   а прежняя страница отступает и темнеет до медового. */
+html[data-transition='catalog']::view-transition-old(root) {
+  animation: 760ms var(--ease-in-out) both comb-recede;
+}
+html[data-transition='catalog']::view-transition-new(root) {
+  animation: 760ms cubic-bezier(0.7, 0, 0.2, 1) both comb-open;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 115.47'%3E%3Cpolygon points='50,0 100,28.87 100,86.6 50,115.47 0,86.6 0,28.87'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+}
+/* Размер и положение меняются вместе, поэтому сота всё время растёт вокруг точки нажатия. */
+@keyframes comb-open {
+  from {
+    mask-size: 0 0;
+    mask-position: calc(var(--vt-x, 50) * 1vw) calc(var(--vt-y, 50) * 1vh);
+  }
+  to {
+    mask-size: 320vmax 370vmax;
+    mask-position: calc(var(--vt-x, 50) * 1vw - 160vmax)
+      calc(var(--vt-y, 50) * 1vh - 185vmax);
+  }
+}
+@keyframes comb-recede {
+  to {
+    transform: scale(0.92);
+    filter: sepia(1) saturate(2.6) brightness(0.55);
+  }
+}
+/* Карточки каталога после такого входа встают по очереди, когда сота уже раскрылась. */
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(-n + 8) {
+  animation: rise 640ms var(--ease-out) both;
+  animation-delay: calc(420ms + var(--n, 0) * 70ms);
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(2) {
+  --n: 1;
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(3) {
+  --n: 2;
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(4) {
+  --n: 3;
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(5) {
+  --n: 4;
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(6) {
+  --n: 5;
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(7) {
+  --n: 6;
+}
+html[data-transition='catalog'] [data-catalog-results] > :nth-child(8) {
+  --n: 7;
+}
+
 /* Первый экран появляется по очереди: .rise с задержкой из --delay. */
 @keyframes rise {
   from {
@@ -51,6 +107,22 @@
 .rise {
   animation: rise 760ms var(--ease-out) both;
   animation-delay: var(--delay, 0ms);
+}
+/* Задержки шагов задаются атрибутом, а не встроенным стилем: его запрещает CSP. */
+.rise[data-step='1'] {
+  --delay: 80ms;
+}
+.rise[data-step='2'] {
+  --delay: 160ms;
+}
+.rise[data-step='3'] {
+  --delay: 220ms;
+}
+.rise[data-step='4'] {
+  --delay: 300ms;
+}
+.rise[data-step='5'] {
+  --delay: 380ms;
 }
 
 /* Блоки ниже первого экрана проявляются, когда до них доходит прокрутка. Это анимации,
@@ -93,6 +165,21 @@
 }
 .bump {
   animation: bump 520ms var(--ease-spring);
+}
+
+/* Пчела, которая летит в корзину: крылья машут, пока она в воздухе. */
+.flying-bee .wing {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: wing 70ms linear infinite alternate;
+}
+.flying-bee .wing.back {
+  animation-delay: -35ms;
+}
+@keyframes wing {
+  to {
+    transform: scaleY(0.25);
+  }
 }
 
 /* Загрузка: медовый блик бежит по плашке вместо застывшего текста. */
