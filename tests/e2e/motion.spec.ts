@@ -76,7 +76,7 @@ function style(page: Page, selector: string, property: string) {
       );
 }
 
-test('reduced motion stops the hero bee and shows the heading at once', async ({
+test('reduced motion keeps the still hero picture instead of the 3D story', async ({
   browser,
 }) => {
   const { context, page } = await open(browser, { reducedMotion: 'reduce' });
@@ -84,6 +84,10 @@ test('reduced motion stops the hero bee and shows the heading at once', async ({
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
     'Хорошая пасека',
   );
+  await page.waitForTimeout(1000);
+  await expect(page.locator('[data-story]')).not.toHaveClass(/story--live/);
+  await expect(page.locator('[data-story-canvas]')).toBeHidden();
+  await expect(page.locator('.art')).toBeVisible();
   await expect
     .poll(style(page, '.bee-body', 'animation-iteration-count'))
     .toBe('1');
@@ -91,15 +95,79 @@ test('reduced motion stops the hero bee and shows the heading at once', async ({
   await context.close();
 });
 
-test('without reduced motion the hero bee keeps flying', async ({
+test('without WebGL the home page keeps the still hero picture', async ({
   browser,
 }) => {
   const { context, page } = await open(browser);
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      if (type.startsWith('webgl')) return null;
+      return (original as (...args: unknown[]) => unknown).call(
+        this,
+        type,
+        ...rest,
+      );
+    } as typeof original;
+  });
   await page.goto(home);
+  await page.waitForTimeout(1500);
+  await expect(page.locator('[data-story]')).not.toHaveClass(/story--live/);
+  await expect(page.locator('.art')).toBeVisible();
+  await expect(page.getByLabel('Что ищете')).toBeVisible();
+  await context.close();
+});
+
+test('the home page tells the hive story in 3D while scrolling', async ({
+  browser,
+}) => {
+  const { context, page } = await open(browser);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(home);
+  const story = page.locator('[data-story]');
+  await expect(story).toHaveClass(/story--live/);
+  await expect(page.locator('[data-story-canvas]')).toBeVisible();
+  await expect(page.locator('.art')).toBeHidden();
+  // Части улья подписаны, когда история доходит до первой главы.
+  const parts = page.locator('[data-part]');
+  await expect(parts).toHaveCount(5);
+  await page
+    .getByRole('heading', { name: /Корпуса, магазины и рамки/ })
+    .evaluate((heading) =>
+      heading.closest('.story-step')?.scrollIntoView({ block: 'start' }),
+    );
   await expect
-    .poll(style(page, '.bee-body', 'animation-iteration-count'))
-    .toBe('infinite');
-  await expect.poll(style(page, '.bee-body', 'animation-name')).toMatch(/\S/);
+    .poll(() =>
+      parts.first().evaluate((part) => Number(getComputedStyle(part).opacity)),
+    )
+    .toBeGreaterThan(0.9);
+  // В конце истории поиск по-прежнему работает поверх сот.
+  await page.getByLabel('Что ищете').scrollIntoViewIfNeeded();
+  await expect(page.getByRole('button', { name: 'Найти' })).toBeVisible();
+  // Сцена кончается вместе с историей и не закрывает каталог под ней.
+  await page
+    .getByRole('heading', { name: 'Каталог', level: 2 })
+    .scrollIntoViewIfNeeded();
+  const stageBelowStory = await page.evaluate(() => {
+    const stage = document.querySelector('[data-story-stage]');
+    const story = document.querySelector('[data-story]');
+    if (!stage || !story) return Number.NaN;
+    return (
+      stage.getBoundingClientRect().bottom -
+      story.getBoundingClientRect().bottom
+    );
+  });
+  expect(stageBelowStory).toBeLessThanOrEqual(0);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBe(0);
+  expect(errors).toEqual([]);
   await context.close();
 });
 

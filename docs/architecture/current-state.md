@@ -49,6 +49,15 @@ filtering), `GET /api/v1/admin/orders/{id}` (detail), and
 control, stock fulfilment on ship/pickup, delivery price and tracking number,
 permissions and audit are described in [ADR 0012](../adr/0012-order-lifecycle.md).
 
+The storefront home page tells one scroll-driven 3D story over a sticky scene:
+an assembled Dadant hive, the hive taken apart with its parts labelled, a body frame
+coming forward against the light while the comb fills with honey, and a close-up
+of the comb that reacts to the pointer behind the search form
+(`apps/storefront/src/lib/hive-story`). The models are built in code with
+three.js, which loads as a separate file only when the browser is idle. Without
+JavaScript, with reduced motion, with data saving or without WebGL the page shows
+the still hero picture and the same text as ordinary sections.
+
 What does not exist yet: online payment and delivery-service adapters.
 
 The local Windows environment has Node.js and can run frontend and PGlite SQL
