@@ -2,6 +2,7 @@
 #include "platform/Endpoint.hpp"
 #include "platform/Errors.hpp"
 #include "platform/Json.hpp"
+#include <charconv>
 #include <regex>
 
 namespace bee::orders {
@@ -10,6 +11,15 @@ bool uuid(const std::string& value) {
     static const std::regex pattern(
         "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     return std::regex_match(value, pattern);
+}
+
+long long integer(const std::string& input, long long fallback, long long min, long long max) {
+    if (input.empty()) return fallback;
+    long long value;
+    const auto [end, error] = std::from_chars(input.data(), input.data() + input.size(), value);
+    if (error != std::errc{} || end != input.data() + input.size() || value < min || value > max)
+        throw Error(400, "INVALID_FILTER", "Invalid page size or offset");
+    return value;
 }
 
 void locale(const std::string& value) {
@@ -57,6 +67,14 @@ Json::Value result(const drogon::orm::Result& rows) {
         throw Error(404, code, "Order not found");
     if (code == "ORDER_NOT_CANCELLABLE")
         throw Error(409, code, "Only a new order can be cancelled");
+    if (code == "ORDER_STATUS_CHANGED")
+        throw Error(409, code, "The order has changed; refresh it before the next step");
+    if (code == "INVALID_TRANSITION")
+        throw Error(409, code, "This step is not possible from the current status");
+    if (code == "INVALID_DELIVERY_PRICE")
+        throw Error(422, code, "The delivery price is set when a courier or post order is confirmed");
+    if (code == "INVALID_TRACKING_NUMBER")
+        throw Error(422, code, "The tracking number is set when the order ships");
     throw Error(500, "ORDER_FAILED", "Order operation could not be completed");
 }
 }
@@ -100,6 +118,39 @@ Json::Value Service::cancel(const std::string& customer, const std::string& orde
         throw Error(404, "NOT_FOUND", "Order not found");
     const auto rows = db_->execSqlSync(
         "SELECT order_cancel($1::uuid,$2::uuid)::text AS document", customer, orderId);
+    return result(rows);
+}
+
+Json::Value Service::adminList(const std::string& status, const std::string& query,
+                               long long limit, long long offset) const {
+    static const std::regex statuses("^(new|confirmed|ready|shipped|completed|cancelled)?$");
+    if (!std::regex_match(status, statuses))
+        throw Error(400, "INVALID_FILTER", "Unknown order status");
+    if (query.size() > 120)
+        throw Error(400, "INVALID_FILTER", "The search text is too long");
+    const auto rows = db_->execSqlSync(
+        "SELECT admin_orders_document(NULLIF($1,''),NULLIF($2,''),$3::integer,$4::integer)::text AS document",
+        status, query, static_cast<int>(limit), static_cast<int>(offset));
+    return result(rows);
+}
+
+Json::Value Service::adminGet(const std::string& orderId) const {
+    if (!uuid(orderId))
+        throw Error(404, "NOT_FOUND", "Order not found");
+    const auto rows = db_->execSqlSync(
+        "SELECT admin_order_document($1::uuid)::text AS document", orderId);
+    return result(rows);
+}
+
+Json::Value Service::transition(const std::string& actor, const std::string& orderId,
+                                const Json::Value& change, const std::string& requestId) const {
+    if (!uuid(orderId))
+        throw Error(404, "NOT_FOUND", "Order not found");
+    if (!change.isObject() || !change["from"].isString() || !change["to"].isString())
+        throw Error(422, "VALIDATION_FAILED", "The current and the next status are required");
+    const auto rows = db_->execSqlSync(
+        "SELECT order_transition($1::uuid,$2::uuid,$3::uuid,$4::jsonb)::text AS document",
+        actor, orderId, requestId, encode(change));
     return result(rows);
 }
 
@@ -168,6 +219,37 @@ void registerRoutes(std::shared_ptr<Service> service,
                     throw Error(404, "NOT_FOUND", "Order not found");
                 return drogon::HttpResponse::newHttpJsonResponse(
                     service->cancel(principal.id, orderId));
+            });
+        }, {drogon::Post});
+
+    drogon::app().registerHandler("/api/v1/admin/orders",
+        [service, auth, &executor](const drogon::HttpRequestPtr& req, Reply&& cb) {
+            dispatch(executor, req, std::move(cb), [=] {
+                auth->require(req, "orders.read");
+                return drogon::HttpResponse::newHttpJsonResponse(service->adminList(
+                    req->getParameter("status"), req->getParameter("q"),
+                    integer(req->getParameter("limit"), 25, 1, 100),
+                    integer(req->getParameter("offset"), 0, 0, 1000000)));
+            });
+        }, {drogon::Get});
+
+    drogon::app().registerHandler("/api/v1/admin/orders/{1}",
+        [service, auth, &executor](const drogon::HttpRequestPtr& req, Reply&& cb,
+                                   const std::string& orderId) {
+            dispatch(executor, req, std::move(cb), [=] {
+                auth->require(req, "orders.read");
+                return drogon::HttpResponse::newHttpJsonResponse(service->adminGet(orderId));
+            });
+        }, {drogon::Get});
+
+    drogon::app().registerHandler("/api/v1/admin/orders/{1}/status",
+        [service, auth, &executor](const drogon::HttpRequestPtr& req, Reply&& cb,
+                                   const std::string& orderId) {
+            dispatch(executor, req, std::move(cb), [=] {
+                auth->requireOrigin(req);
+                const auto actor = auth->require(req, "orders.manage");
+                return drogon::HttpResponse::newHttpJsonResponse(
+                    service->transition(actor.id, orderId, jsonBody(req), requestId(req)));
             });
         }, {drogon::Post});
 }

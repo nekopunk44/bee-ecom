@@ -13,6 +13,11 @@ public:
     Json::Value list(const std::string& customer) const;
     Json::Value get(const std::string& customer, const std::string& orderId) const;
     Json::Value cancel(const std::string& customer, const std::string& orderId) const;
+    Json::Value adminList(const std::string& status, const std::string& query,
+                          long long limit, long long offset) const;
+    Json::Value adminGet(const std::string& orderId) const;
+    Json::Value transition(const std::string& actor, const std::string& orderId,
+                           const Json::Value& change, const std::string& requestId) const;
 private:
     drogon::orm::DbClientPtr db_;
 };
