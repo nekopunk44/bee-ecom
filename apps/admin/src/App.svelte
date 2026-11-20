@@ -43,7 +43,9 @@
 <main id="main" class="container">
   <p class="eyebrow">Управление магазином</p>
   <h1 class="display">Рабочее пространство Bee</h1>
-  <p class="intro">Товары, переводы, варианты и изображения вашего магазина.</p>
+  <p class="intro">
+    Товары, переводы, изображения, остатки на складах и заказы покупателей.
+  </p>
   <CatalogWorkspace />
   <details>
     <summary>Проверка подключения</summary>

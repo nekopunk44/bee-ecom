@@ -10,6 +10,7 @@
   import ProductEditor from './ProductEditor.svelte';
   import ReferenceEditor from './ReferenceEditor.svelte';
   import InventoryWorkspace from './InventoryWorkspace.svelte';
+  import OrdersWorkspace from './OrdersWorkspace.svelte';
   let session = $state<Session | null>(null);
   let needsLogin = $state(false);
   let email = $state('');
@@ -26,7 +27,9 @@
   let page = $state(1);
   let total = $state(0);
   let query = $state('');
-  let tab = $state<'products' | 'references' | 'inventory'>('products');
+  let tab = $state<'products' | 'references' | 'inventory' | 'orders'>(
+    'products',
+  );
   let editing = $state<Product | null | undefined>(undefined);
   let editKey = $state(0);
   const canWrite = $derived(
@@ -37,6 +40,9 @@
   );
   const canReadInventory = $derived(
     session?.permissions.includes('inventory.read') ?? false,
+  );
+  const canReadOrders = $derived(
+    session?.permissions.includes('orders.read') ?? false,
   );
   async function load() {
     if (!canReadCatalog && !canWrite) {
@@ -79,11 +85,11 @@
       if (result.data) {
         session = result.data;
         needsLogin = false;
-        if (
-          !session.permissions.includes('products.read') &&
-          session.permissions.includes('inventory.read')
-        )
-          tab = 'inventory';
+        // Без доступа к каталогу открываем первый раздел, который сотруднику доступен.
+        if (!session.permissions.includes('products.read'))
+          tab = session.permissions.includes('orders.read')
+            ? 'orders'
+            : 'inventory';
         await load();
       }
     } catch {
@@ -184,8 +190,17 @@
         >{/if}{#if canReadInventory}<button
           aria-current={tab === 'inventory' ? 'page' : undefined}
           onclick={() => (tab = 'inventory')}>Склады и остатки</button
+        >{/if}{#if canReadOrders}<button
+          aria-current={tab === 'orders' ? 'page' : undefined}
+          onclick={() => (tab = 'orders')}>Заказы</button
         >{/if}
     </nav>
+    {#if tab === 'orders'}
+      <OrdersWorkspace
+        permissions={session.permissions}
+        onExpired={() => (needsLogin = true)}
+      />
+    {/if}
     {#if tab === 'inventory'}
       <InventoryWorkspace
         permissions={session.permissions}
