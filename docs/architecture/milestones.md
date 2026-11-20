@@ -15,7 +15,7 @@
    audited/idempotent adjustments, warehouse management UI/API, availability,
    and database reservation/release/expiry primitives with a worker are
    implemented, as are customer accounts and the cart (API and storefront UI).
-   Checkout/order API and UI and payment/delivery adapters remain. Acceptance requires concurrent buyers
+   Checkout, order history and cancellation (API and storefront UI) are implemented; payment/delivery adapters remain. Acceptance requires concurrent buyers
    against real PostgreSQL and idempotent end-to-end checkout.
 4. **Distinctive features:** compatibility, budget-aware apiary configurator,
    explainable recommendations, favorites, comparison and warehouse views.
