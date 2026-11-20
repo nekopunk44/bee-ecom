@@ -382,6 +382,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List orders for staff, newest first */
+        get: operations["listAdminOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get any order for staff */
+        get: operations["getAdminOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{orderId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move an order to its next status
+         * @description `from` must be the status the operator saw; a changed order returns 409 ORDER_STATUS_CHANGED. Repeating a step that already happened returns the order unchanged.
+         */
+        post: operations["changeOrderStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/media": {
         parameters: {
             query?: never;
@@ -559,6 +613,47 @@ export interface components {
             /** @enum {string} */
             currency: "MDL";
             quantity: number;
+        };
+        AdminOrderSummary: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            status: "new" | "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            deliveryMethod: "pickup" | "courier" | "post";
+            recipientName: string;
+            phone: string;
+            itemsTotalMinor: number;
+            deliveryPriceMinor: number | null;
+            totalMinor: number | null;
+            /** @enum {string} */
+            currency: "MDL";
+            quantity: number;
+        };
+        AdminOrderList: {
+            items: components["schemas"]["AdminOrderSummary"][];
+            total: number;
+            counts: {
+                new: number;
+                confirmed: number;
+                ready: number;
+                shipped: number;
+                completed: number;
+                cancelled: number;
+            };
+        };
+        OrderStatusChange: {
+            /** @enum {string} */
+            from: "new" | "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+            /** @enum {string} */
+            to: "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+            /** @description Courier or post price agreed on confirmation */
+            deliveryPriceMinor?: number;
+            /** @description Post tracking number, set when the order ships */
+            trackingNumber?: string;
         };
         OrderList: {
             items: components["schemas"]["OrderSummary"][];
@@ -1402,6 +1497,83 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Cancelled order details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    listAdminOrders: {
+        parameters: {
+            query?: {
+                status?: "new" | "confirmed" | "ready" | "shipped" | "completed" | "cancelled";
+                /** @description Part of the order number, the recipient's name or phone */
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of matching orders and order counts per status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrderList"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    getAdminOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            default: components["responses"]["ApiError"];
+        };
+    };
+    changeOrderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Order after the transition */
             200: {
                 headers: {
                     [name: string]: unknown;
