@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { flip } from 'svelte/animate';
+  import { fly, slide } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
+  import { Tween, prefersReducedMotion } from 'svelte/motion';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
   import { formatMoney as money } from '../lib/money';
@@ -67,6 +71,11 @@
       0,
     ),
   );
+  // Итог не перескакивает, а досчитывает до нового значения.
+  const shownSubtotal = Tween.of(() => subtotal, {
+    duration: () => (prefersReducedMotion.current ? 0 : 450),
+    easing: cubicOut,
+  });
   let pieces = $derived(
     (cart?.items ?? []).reduce((sum, item) => sum + item.quantity, 0),
   );
@@ -154,7 +163,7 @@
 {/snippet}
 
 <div class="cart">
-  {#if loading}<p class="state" aria-live="polite">{copy.loading}</p>
+  {#if loading}<p class="state shimmer" aria-live="polite">{copy.loading}</p>
   {:else if authRequired}
     <div class="state">
       <p>{copy.signIn}</p>
@@ -181,7 +190,10 @@
         </p>
         <ul>
           {#each cart.items as item (item.variantId)}
-            <li>
+            <li
+              animate:flip={{ duration: 320, easing: cubicOut }}
+              out:slide={{ duration: 280, easing: cubicOut }}
+            >
               <span class="thumb">{@render hex(34)}</span>
               <div class="info">
                 <a class="name" href={`/${locale}/catalog/${item.productSlug}/`}
@@ -204,7 +216,12 @@
                       onclick={() => setQuantity(item, item.quantity - 1)}
                       disabled={busyVariant === item.variantId}>−</button
                     >
-                    <span aria-live="polite">{item.quantity}</span>
+                    <span aria-live="polite" class="quantity">
+                      {#key item.quantity}<span
+                          in:fly={{ y: 8, duration: 220, easing: cubicOut }}
+                          >{item.quantity}</span
+                        >{/key}
+                    </span>
                     <button
                       aria-label={copy.increase}
                       onclick={() => setQuantity(item, item.quantity + 1)}
@@ -237,7 +254,7 @@
       <aside class="summary">
         <p class="total">
           <span>{copy.subtotal}</span>
-          <strong>{formatMoney(subtotal)}</strong>
+          <strong>{formatMoney(Math.round(shownSubtotal.current))}</strong>
         </p>
         <p class="note">{copy.prices}</p>
         <a class="button honey" href={`/${locale}/checkout/`}>{copy.checkout}</a
@@ -335,8 +352,10 @@
     font-size: 1.25rem;
     line-height: 1;
   }
-  .stepper span {
+  .stepper .quantity {
+    display: inline-grid;
     min-width: 1.5rem;
+    overflow: hidden;
     text-align: center;
     font-weight: 700;
   }
