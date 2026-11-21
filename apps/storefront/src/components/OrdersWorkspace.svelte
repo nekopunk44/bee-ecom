@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
   import { formatMoney } from '../lib/money';
@@ -70,7 +72,7 @@
 </script>
 
 <div class="orders">
-  {#if loading}<p class="state" aria-live="polite">{copy.loading}</p>
+  {#if loading}<p class="state shimmer" aria-live="polite">{copy.loading}</p>
   {:else if authRequired}
     <div class="state">
       <p>{copy.signIn}</p>
@@ -88,8 +90,15 @@
     </div>
   {:else}
     <ul aria-label={copy.list}>
-      {#each orders as order (order.id)}
-        <li>
+      {#each orders as order, index (order.id)}
+        <li
+          in:fly={{
+            y: 14,
+            duration: 420,
+            delay: Math.min(index, 8) * 60,
+            easing: cubicOut,
+          }}
+        >
           <a href={`/${locale}/orders/${order.id}/`}>
             <span class="head">
               <strong>{copy.order} {order.number}</strong>
@@ -149,8 +158,16 @@
     background: var(--color-paper);
     text-decoration: none;
   }
+  a {
+    transition:
+      border-color var(--motion-normal) var(--ease-standard),
+      transform var(--motion-normal) var(--ease-out),
+      box-shadow var(--motion-normal) var(--ease-out);
+  }
   a:hover {
     border-color: var(--color-ink);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
   }
   .head {
     display: flex;

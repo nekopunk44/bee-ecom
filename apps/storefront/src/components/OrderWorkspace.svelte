@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fly, scale } from 'svelte/transition';
+  import { backOut, cubicOut } from 'svelte/easing';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
   import { formatMoney } from '../lib/money';
@@ -149,7 +151,7 @@
 </script>
 
 <div class="order">
-  {#if loading && !order}<p class="state" aria-live="polite">
+  {#if loading && !order}<p class="state shimmer" aria-live="polite">
       {copy.loading}
     </p>
   {:else if authRequired}
@@ -169,7 +171,27 @@
     </div>
   {:else}
     {#if placed && order.status === 'new'}
-      <p class="placed" role="status">{copy.placed}</p>
+      <p
+        class="placed"
+        role="status"
+        in:scale={{ start: 0.94, duration: 520, easing: backOut }}
+      >
+        <!-- Соты разлетаются из значка: маленький праздник оформленного заказа. -->
+        <span class="burst" aria-hidden="true">
+          {#each Array.from({ length: 8 }, (_, i) => i) as i (i)}
+            <i style={`--angle: ${i * 45}deg`}></i>
+          {/each}
+          <svg width="26" height="30" viewBox="0 0 30 34"
+            ><polygon
+              points="15,1 29,9 29,25 15,33 1,25 1,9"
+              fill="#f5b700"
+              stroke="#17150f"
+              stroke-width="2"
+            ></polygon></svg
+          >
+        </span>
+        <span>{copy.placed}</span>
+      </p>
     {/if}
     <div class="layout">
       <div class="main">
@@ -251,8 +273,15 @@
         <section aria-labelledby="order-history">
           <h3 id="order-history">{copy.history}</h3>
           <ol class="history">
-            {#each order.history as step (step.at + step.status)}
-              <li>
+            {#each order.history as step, index (step.at + step.status)}
+              <li
+                in:fly={{
+                  x: -12,
+                  duration: 380,
+                  delay: 200 + index * 90,
+                  easing: cubicOut,
+                }}
+              >
                 <strong>{statusLabels[locale][step.status]}</strong>
                 <time datetime={step.at}>{formatDate(locale, step.at)}</time>
               </li>
@@ -332,12 +361,57 @@
     margin: 0;
   }
   .placed {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
     max-width: 48rem;
     margin: 0 0 var(--space-lg);
     padding: var(--space-md) var(--space-lg);
     border-radius: var(--radius-md);
     background: var(--color-honey-soft);
     font-weight: 600;
+  }
+  .burst {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+  }
+  .burst svg {
+    animation: pop 640ms var(--ease-spring) 120ms both;
+  }
+  .burst i {
+    position: absolute;
+    width: 0.55rem;
+    height: 0.62rem;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background: var(--color-honey);
+    opacity: 0;
+    animation: spark 900ms var(--ease-out) 220ms both;
+  }
+  @keyframes pop {
+    from {
+      transform: scale(0.3) rotate(-60deg);
+    }
+  }
+  @keyframes spark {
+    0% {
+      opacity: 1;
+      transform: rotate(var(--angle)) translateY(0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(var(--angle)) translateY(-2.6rem) scale(0.4);
+    }
+  }
+  /* Новый заказ ждёт звонка: метка статуса мягко пульсирует. */
+  .status.new {
+    animation: waiting 2.4s var(--ease-in-out) infinite;
+  }
+  @keyframes waiting {
+    50% {
+      box-shadow: 0 0 0 0.35rem rgb(245 183 0 / 25%);
+    }
   }
   .layout {
     display: grid;
