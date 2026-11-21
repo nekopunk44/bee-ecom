@@ -90,5 +90,5 @@ Every successful transition writes three records in the same transaction:
   shipping; neither can be changed later through the transition endpoint.
 - The outbox event enables downstream consumers (notifications, analytics)
   to react to status changes reliably.
-- The audit log provides a tamper-evident trail of who did what and when,
-  with the correlation id linking back to the HTTP request.
+- The audit log records who did what and when, with the correlation id
+  linking back to the HTTP request.
