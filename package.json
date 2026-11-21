@@ -30,7 +30,8 @@
     "agent:list": "git worktree list",
     "agent:remove": "node infra/scripts/agent-worktree.mjs remove",
     "agent:ready": "node infra/scripts/agent-run.mjs ready",
-    "agent:run": "node --env-file-if-exists=.env.local infra/scripts/agent-run.mjs run"
+    "agent:run": "node --env-file-if-exists=.env.local infra/scripts/agent-run.mjs run",
+    "demo:seed": "node --env-file-if-exists=.env.local infra/scripts/seed-demo.mjs"
   },
   "dependencies": {
     "pg": "8.23.0"
