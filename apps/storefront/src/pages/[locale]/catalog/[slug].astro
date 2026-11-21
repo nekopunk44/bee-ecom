@@ -92,7 +92,10 @@ const structured = product
       <>
         <div class="product">
           <div class="media">
-            <div class:list={['hero', { empty: !hero }]}>
+            <div
+              class:list={['hero', { empty: !hero }]}
+              style={`view-transition-name: product-${product.slug}`}
+            >
               {hero ? (
                 <img
                   src={hero.url}
@@ -131,15 +134,17 @@ const structured = product
             )}
           </div>
           <div class="buy">
-            <p class="eyebrow">{label}</p>
-            <h1 class="display">{translation.name}</h1>
+            <p class="eyebrow rise">{label}</p>
+            <h1 class="display rise" style="--delay: 70ms">
+              {translation.name}
+            </h1>
             {variants.length > 0 && (
-              <p class="price">
+              <p class="price rise" style="--delay: 140ms">
                 {!single && <span>{t.from}</span>}
                 {money(lowest, locale)}
               </p>
             )}
-            <div class="variants">
+            <div class="variants rise" style="--delay: 210ms">
               {variants.map((variant) => (
                 <article class:list={['variant', { single }]}>
                   <div class="variant-head">
@@ -161,13 +166,13 @@ const structured = product
                 </article>
               ))}
             </div>
-            <p class="notice">
+            <p class="notice rise" style="--delay: 280ms">
               <HexMark size={22} />
               <span>{t.orderNotice}</span>
             </p>
           </div>
         </div>
-        <div class="details">
+        <div class="details" data-reveal>
           <section aria-labelledby="description-heading">
             <h2 id="description-heading" class="display">
               {t.description}
