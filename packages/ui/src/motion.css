@@ -1,0 +1,131 @@
+/*
+ * Движение витрины: короткое, мягкое и с пружинкой там, где человек сам что-то сделал.
+ * Всё здесь — прогрессивное улучшение: без JS, без поддержки View Transitions или при
+ * prefers-reduced-motion страница просто работает без анимаций.
+ */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Переходы между страницами как в приложении: шапка остаётся на месте, содержимое
+   мягко сменяется, а фото товара перелетает из карточки на страницу товара. */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-old(root) {
+  animation: 160ms var(--ease-standard) both page-out;
+}
+::view-transition-new(root) {
+  animation: 380ms var(--ease-out) 60ms both page-in;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Первый экран появляется по очереди: .rise с задержкой из --delay. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+.rise {
+  animation: rise 760ms var(--ease-out) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* Блоки ниже первого экрана проявляются, когда до них доходит прокрутка. Это анимации,
+   привязанные к прокрутке, без JavaScript: где они не поддерживаются, блоки просто видны.
+   Соседи в одном ряду (--i) начинают чуть позже друг друга — волной. */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 8%) entry
+        calc(70% + var(--i, 0) * 8%);
+    }
+    [data-reveal]:nth-child(4n + 2) {
+      --i: 1;
+    }
+    [data-reveal]:nth-child(4n + 3) {
+      --i: 2;
+    }
+    [data-reveal]:nth-child(4n + 4) {
+      --i: 3;
+    }
+  }
+}
+
+/* Значок корзины подпрыгивает, когда в неё что-то прилетело. */
+@keyframes bump {
+  30% {
+    transform: scale(1.14) rotate(-4deg);
+  }
+  60% {
+    transform: scale(0.96) rotate(2deg);
+  }
+}
+.bump {
+  animation: bump 520ms var(--ease-spring);
+}
+
+/* Загрузка: медовый блик бежит по плашке вместо застывшего текста. */
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+/* !important: у плашек состояния свой фон в стилях компонента, блик ложится поверх. */
+.shimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(255 242 199 / 90%) 50%,
+    transparent 70%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Поле с ошибкой коротко вздрагивает, чтобы его было видно краем глаза. */
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
