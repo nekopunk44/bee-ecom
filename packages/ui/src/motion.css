@@ -14,6 +14,10 @@
 @view-transition {
   navigation: auto;
 }
+/* Пока идёт переход, клики проходят к новой странице, а не упираются в снимок. */
+::view-transition {
+  pointer-events: none;
+}
 ::view-transition-group(*) {
   animation-duration: 420ms;
   animation-timing-function: var(--ease-out);
