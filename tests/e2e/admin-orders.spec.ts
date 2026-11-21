@@ -166,13 +166,15 @@ test('courier order progresses from new to shipped', async ({ page }) => {
   });
 
   // After confirming, the «Собран» button appears
-  await expect(page.getByRole('button', { name: 'Собран' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Собран', exact: true }),
+  ).toBeVisible();
 
   // --- confirmed → ready ---
   const readyPromise = page.waitForRequest(
     (req) => req.url().includes('/status') && req.method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Собран' }).click();
+  await page.getByRole('button', { name: 'Собран', exact: true }).click();
   const readyReq = await readyPromise;
   expect(readyReq.postDataJSON()).toEqual({ from: 'confirmed', to: 'ready' });
 
@@ -184,7 +186,7 @@ test('courier order progresses from new to shipped', async ({ page }) => {
   const shippedPromise = page.waitForRequest(
     (req) => req.url().includes('/status') && req.method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Отправлен' }).click();
+  await page.getByRole('button', { name: 'Отправлен', exact: true }).click();
   const shippedReq = await shippedPromise;
   expect(shippedReq.postDataJSON()).toEqual({
     from: 'ready',
@@ -337,7 +339,9 @@ test('orders.read-only: order is visible but action buttons are absent', async (
   await expect(page.getByText(`Заказ ${ORDER_NUMBER}`)).toBeVisible();
 
   // Order details are visible
-  await expect(page.getByText('Иван Иванов')).toBeVisible();
+  await expect(
+    page.getByRole('article').getByText('Иван Иванов'),
+  ).toBeVisible();
 
   // Action buttons must NOT exist
   await expect(
