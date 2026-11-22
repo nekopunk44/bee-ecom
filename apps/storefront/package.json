@@ -16,9 +16,11 @@
     "@bee/api-client": "0.1.0",
     "@bee/ui": "0.1.0",
     "astro": "7.3.4",
-    "svelte": "5.57.1"
+    "svelte": "5.57.1",
+    "three": "0.187.0"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.10"
+    "@astrojs/check": "0.9.10",
+    "@types/three": "0.187.0"
   }
 }
