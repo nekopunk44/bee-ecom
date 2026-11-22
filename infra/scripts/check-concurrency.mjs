@@ -277,13 +277,17 @@ for (let round = 0; round < 4; round += 1) {
   await putInCart(winner, variantA, 1);
   const placed = await placeOrder(winner);
   assert.equal(placed.status, 201, outcome([placed]));
-  const [cancel, confirm] = await Promise.all([
+  // Whichever request leaves first usually wins, so the rounds alternate the order.
+  const cancelling = () =>
     call(`/orders/${placed.body.id}/cancel`, {
       method: 'POST',
       headers: winner,
-    }),
-    changeStatus(placed.body, 'new', 'confirmed'),
-  ]);
+    });
+  const confirming = () => changeStatus(placed.body, 'new', 'confirmed');
+  const [cancel, confirm] =
+    round % 2 === 0
+      ? await Promise.all([cancelling(), confirming()])
+      : (await Promise.all([confirming(), cancelling()])).reverse();
   assert.deepEqual(
     [cancel.status, confirm.status].sort(),
     [200, 409],
