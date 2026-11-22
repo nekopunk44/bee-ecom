@@ -64,6 +64,8 @@ jobs:
       - run: node infra/scripts/smoke.mjs
       - name: Catalog authentication and publishing
         run: node infra/scripts/check-catalog.mjs
+      - name: Concurrent checkout and order changes
+        run: node infra/scripts/check-concurrency.mjs
       - name: Migrations are idempotent
         run: docker compose run --rm migrate
       - name: Worker preserves unknown events
