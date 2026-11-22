@@ -220,9 +220,13 @@ const commandFor = ({ tool, model, role, cwd, title, prompts }) => {
 
 const stopProcess = (child) => {
   if (isWindows) {
-    execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
-      stdio: 'ignore',
-    });
+    try {
+      execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+        stdio: 'ignore',
+      });
+    } catch {
+      // The agent exited on its own between the check and the kill: nothing to stop.
+    }
   } else {
     child.kill('SIGTERM');
   }
