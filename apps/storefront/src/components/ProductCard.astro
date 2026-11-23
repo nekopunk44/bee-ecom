@@ -26,6 +26,7 @@ const several = new Set(prices).size > 1;
     <div
       class:list={['picture', { empty: !image }]}
       style={`view-transition-name: product-${product.slug}`}
+      data-tilt
     >
       {image ? (
         <img
@@ -51,6 +52,10 @@ const several = new Set(prices).size > 1;
     {money(price, locale)}
   </p>
 </article>
+<script>
+  import { enableTilt } from '../lib/motion';
+  enableTilt();
+</script>
 <style>
   article {
     display: flex;
@@ -60,8 +65,11 @@ const several = new Set(prices).size > 1;
     text-decoration: none;
   }
   .picture {
+    position: relative;
+    transform: perspective(50rem) rotateX(var(--tilt-x, 0deg))
+      rotateY(var(--tilt-y, 0deg));
     transition:
-      transform var(--motion-normal) var(--ease-out),
+      transform 180ms var(--ease-out),
       box-shadow var(--motion-normal) var(--ease-out);
     aspect-ratio: 1;
     display: grid;
@@ -91,9 +99,28 @@ const several = new Set(prices).size > 1;
   a:hover img {
     transform: scale(1.05);
   }
-  /* Карточка приподнимается под указателем и чуть проседает при нажатии. */
+  /* Блик идёт за курсором (координаты ставит enableTilt из lib/motion). */
+  .picture::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle at var(--glare-x, 50%) var(--glare-y, 0%),
+      rgb(255 255 255 / 55%),
+      rgb(255 255 255 / 0%) 55%
+    );
+    opacity: 0;
+    transition: opacity var(--motion-normal) var(--ease-out);
+    pointer-events: none;
+  }
+  a:hover .picture::after {
+    opacity: 1;
+  }
+  /* Карточка приподнимается и наклоняется за указателем, при нажатии чуть проседает. */
   a:hover .picture {
-    transform: translateY(-4px);
+    transform: perspective(50rem) translateY(-4px) rotateX(var(--tilt-x, 0deg))
+      rotateY(var(--tilt-y, 0deg));
     box-shadow: 0 1rem 2rem rgb(23 21 15 / 12%);
   }
   a:active .picture {

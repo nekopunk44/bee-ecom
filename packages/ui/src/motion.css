@@ -95,6 +95,21 @@
   animation: bump 520ms var(--ease-spring);
 }
 
+/* Пчела, которая летит в корзину: крылья машут, пока она в воздухе. */
+.flying-bee .wing {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: wing 70ms linear infinite alternate;
+}
+.flying-bee .wing.back {
+  animation-delay: -35ms;
+}
+@keyframes wing {
+  to {
+    transform: scaleY(0.25);
+  }
+}
+
 /* Загрузка: медовый блик бежит по плашке вместо застывшего текста. */
 @keyframes shimmer {
   from {
