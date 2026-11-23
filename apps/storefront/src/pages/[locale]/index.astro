@@ -424,10 +424,32 @@ const catalog = `/${locale}/catalog/`;
     min-height: 100svh;
     padding-block: var(--space-xl);
     border: 0;
+    background: none;
+  }
+  /* Затемнение под текстом лежит на самой сцене, одно на всю историю: у каждого шага
+     было своё, и на границе шагов получался шов. К сотам оно плавно густеет. */
+  .story--live .story-stage::before,
+  .story--live .story-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .story--live .story-stage::before {
     background: linear-gradient(
       90deg,
       rgb(23 21 15 / 0.72),
       rgb(23 21 15 / 0) 55%
+    );
+  }
+  .story--live .story-stage::after {
+    opacity: var(--story-dive, 0);
+    background: linear-gradient(
+      90deg,
+      rgb(23 21 15 / 0.94) 0%,
+      rgb(23 21 15 / 0.8) 38%,
+      rgb(23 21 15 / 0) 68%
     );
   }
   .story--live .art {
@@ -436,20 +458,16 @@ const catalog = `/${locale}/catalog/`;
   .story--live .hero-text {
     flex: 0 1 40rem;
   }
-  .story--live .finale {
-    background: linear-gradient(
-      90deg,
-      rgb(23 21 15 / 0.94) 0%,
-      rgb(23 21 15 / 0.8) 38%,
-      rgb(23 21 15 / 0) 68%
-    );
-  }
   @media (max-width: 47.99rem) {
-    /* На телефоне сцена сверху; затемнение только под текстом, чтобы не закрывать сцену. */
+    /* На телефоне сцена сверху; затемнение с мягкими краями только под текстом. */
     .story--live .story-step {
       align-items: flex-start;
       padding-top: 46svh;
       background: none;
+    }
+    .story--live .story-stage::before,
+    .story--live .story-stage::after {
+      display: none;
     }
     .search input {
       padding-inline: 0.9rem;
@@ -470,7 +488,9 @@ const catalog = `/${locale}/catalog/`;
       background: linear-gradient(
         180deg,
         rgb(23 21 15 / 0) 0,
-        rgb(23 21 15 / 0.9) 3rem
+        rgb(23 21 15 / 0.9) 3rem,
+        rgb(23 21 15 / 0.9) calc(100% - 2rem),
+        rgb(23 21 15 / 0) 100%
       );
     }
   }

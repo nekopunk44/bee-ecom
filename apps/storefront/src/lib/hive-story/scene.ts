@@ -322,6 +322,7 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
   const target = new Vector3();
 
   let frameId = 0;
+  let lastDepth = '';
   let last = performance.now();
   const started = last;
   let stopped = false;
@@ -498,6 +499,12 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
       cursorLight.position.copy(hit);
     }
     cursorLight.intensity = 6 * dive;
+    // Затемнение под текстом на сцене густеет вместе с приближением к сотам.
+    const depth = dive.toFixed(2);
+    if (depth !== lastDepth) {
+      options.stage.style.setProperty('--story-dive', depth);
+      lastDepth = depth;
+    }
 
     // Пчёлы на рамке ползают, пока она висит против света; над сотами летят за курсором.
     const crawlScale = 0.2 * ramp(...timeline.crawl, progress) * (1 - dive);
