@@ -4,6 +4,7 @@ import StoreHeader from '../../components/StoreHeader.astro';
 import StoreFooter from '../../components/StoreFooter.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import CategoryIcon from '../../components/CategoryIcon.astro';
+import HiveStory from '../../components/HiveStory.astro';
 import { isLocale, messages } from '../../i18n';
 import { catalogApi, type Metadata, type Product } from '../../lib/catalog';
 const locale = Astro.params.locale;
@@ -34,138 +35,179 @@ const catalog = `/${locale}/catalog/`;
 <Layout locale={locale} title={t.title} description={t.description}>
   <StoreHeader locale={locale} />
   <main id="main">
-    <section class="hero" aria-labelledby="hero-heading">
-      <div class="container hero-inner">
-        <div class="hero-text">
-          <p class="label rise">{t.label}</p>
-          <h1 id="hero-heading" class="display rise" style="--delay: 90ms">
-            {t.heading}
-          </h1>
-          <p class="intro rise" style="--delay: 200ms">
-            {t.intro}
-          </p>
-          <div class="hero-actions rise" style="--delay: 300ms">
-            <a class="button honey" href={catalog}>
-              {t.open}
+    <section class="story" data-story aria-labelledby="hero-heading">
+      <div class="story-stage" data-story-stage aria-hidden="true">
+        <HiveStory labels={t.parts} />
+      </div>
+      <div class="story-step hero">
+        <div class="container hero-inner">
+          <div class="hero-text">
+            <p class="label rise">{t.label}</p>
+            <h1 id="hero-heading" class="display rise" style="--delay: 90ms">
+              {t.heading}
+            </h1>
+            <p class="intro rise" style="--delay: 200ms">
+              {t.intro}
+            </p>
+            <div class="hero-actions rise" style="--delay: 300ms">
+              <a class="button honey" href={catalog}>
+                {t.open}
+              </a>
+            </div>
+            <div class="queries rise" style="--delay: 380ms">
+              <span>{t.popular}:</span>
+              <ul>
+                {t.queries.map((query) => (
+                  <li>
+                    <a href={`${catalog}?q=${encodeURIComponent(query)}`}>
+                      {query}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p class="notice rise" style="--delay: 460ms">
+              {t.notice}
+            </p>
+          </div>
+          <svg
+            class="art rise"
+            style="--delay: 160ms"
+            width="520"
+            height="500"
+            viewBox="0 0 520 500"
+            role="img"
+            aria-label={t.art}
+          >
+            <g class="far" fill="none" stroke="#3a3628" stroke-width="2">
+              <polygon
+                class="drift a"
+                points="90,40 142,70 142,130 90,160 38,130 38,70"
+              ></polygon>
+              <polygon
+                class="drift b"
+                points="430,300 482,330 482,390 430,420 378,390 378,330"
+              ></polygon>
+              <polygon
+                class="drift c"
+                points="455,90 507,120 507,180 455,210 403,180 403,120"
+              ></polygon>
+              <polygon
+                class="drift d"
+                points="60,330 112,360 112,420 60,450 8,420 8,360"
+              ></polygon>
+            </g>
+            <polygon
+              class="far glow"
+              points="455,90 507,120 507,180 455,210 403,180 403,120"
+              fill="#f5b700"
+              opacity="0.18"
+            ></polygon>
+            <g class="near">
+              <polygon
+                class="comb"
+                points="260,30 445,137 445,353 260,460 75,353 75,137"
+                fill="#f5b700"
+              ></polygon>
+              <g
+                class="hive"
+                stroke="#17150f"
+                stroke-width="5"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+              >
+                <path d="M160 168 L260 138 L360 168 Z" fill="#ffffff"></path>
+                <rect
+                  x="168"
+                  y="168"
+                  width="184"
+                  height="36"
+                  fill="#17150f"
+                ></rect>
+                <rect
+                  x="172"
+                  y="204"
+                  width="176"
+                  height="78"
+                  fill="#ffffff"
+                ></rect>
+                <rect
+                  x="172"
+                  y="282"
+                  width="176"
+                  height="78"
+                  fill="#ffffff"
+                ></rect>
+                <path d="M232 243 h56 M232 321 h56" fill="none"></path>
+                <rect
+                  x="166"
+                  y="360"
+                  width="188"
+                  height="16"
+                  fill="#17150f"
+                ></rect>
+                <path d="M228 368 h64" stroke="#f5b700"></path>
+                <path d="M184 376 v34 M336 376 v34" fill="none"></path>
+              </g>
+            </g>
+            <g class="bee">
+              <g class="bee-body">
+                <ellipse
+                  cx="396"
+                  cy="232"
+                  rx="13"
+                  ry="9"
+                  fill="#17150f"
+                ></ellipse>
+                <ellipse
+                  class="wing"
+                  cx="386"
+                  cy="222"
+                  rx="8"
+                  ry="5"
+                  fill="#ffffff"
+                  opacity="0.9"
+                ></ellipse>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+      {[t.systems, t.frames].map((chapter) => (
+        <div class="story-step chapter">
+          <div class="container chapter-inner">
+            <p class="label">{chapter.label}</p>
+            <h2 class="display">{chapter.title}</h2>
+            <p class="chapter-text">{chapter.text}</p>
+            <a
+              class="chapter-link"
+              href={`${catalog}?q=${encodeURIComponent(chapter.query)}`}
+            >
+              {chapter.link}
             </a>
           </div>
-          <div class="queries rise" style="--delay: 380ms">
-            <span>{t.popular}:</span>
-            <ul>
-              {t.queries.map((query) => (
-                <li>
-                  <a href={`${catalog}?q=${encodeURIComponent(query)}`}>
-                    {query}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <p class="notice rise" style="--delay: 460ms">
-            {t.notice}
-          </p>
         </div>
-        <svg
-          class="art rise"
-          style="--delay: 160ms"
-          width="520"
-          height="500"
-          viewBox="0 0 520 500"
-          role="img"
-          aria-label={t.art}
-        >
-          <g class="far" fill="none" stroke="#3a3628" stroke-width="2">
-            <polygon
-              class="drift a"
-              points="90,40 142,70 142,130 90,160 38,130 38,70"
-            ></polygon>
-            <polygon
-              class="drift b"
-              points="430,300 482,330 482,390 430,420 378,390 378,330"
-            ></polygon>
-            <polygon
-              class="drift c"
-              points="455,90 507,120 507,180 455,210 403,180 403,120"
-            ></polygon>
-            <polygon
-              class="drift d"
-              points="60,330 112,360 112,420 60,450 8,420 8,360"
-            ></polygon>
-          </g>
-          <polygon
-            class="far glow"
-            points="455,90 507,120 507,180 455,210 403,180 403,120"
-            fill="#f5b700"
-            opacity="0.18"
-          ></polygon>
-          <g class="near">
-            <polygon
-              class="comb"
-              points="260,30 445,137 445,353 260,460 75,353 75,137"
-              fill="#f5b700"
-            ></polygon>
-            <g
-              class="hive"
-              stroke="#17150f"
-              stroke-width="5"
-              stroke-linejoin="round"
-              stroke-linecap="round"
-            >
-              <path d="M160 168 L260 138 L360 168 Z" fill="#ffffff"></path>
-              <rect
-                x="168"
-                y="168"
-                width="184"
-                height="36"
-                fill="#17150f"
-              ></rect>
-              <rect
-                x="172"
-                y="204"
-                width="176"
-                height="78"
-                fill="#ffffff"
-              ></rect>
-              <rect
-                x="172"
-                y="282"
-                width="176"
-                height="78"
-                fill="#ffffff"
-              ></rect>
-              <path d="M232 243 h56 M232 321 h56" fill="none"></path>
-              <rect
-                x="166"
-                y="360"
-                width="188"
-                height="16"
-                fill="#17150f"
-              ></rect>
-              <path d="M228 368 h64" stroke="#f5b700"></path>
-              <path d="M184 376 v34 M336 376 v34" fill="none"></path>
-            </g>
-          </g>
-          <g class="bee">
-            <g class="bee-body">
-              <ellipse
-                cx="396"
-                cy="232"
-                rx="13"
-                ry="9"
-                fill="#17150f"
-              ></ellipse>
-              <ellipse
-                class="wing"
-                cx="386"
-                cy="222"
-                rx="8"
-                ry="5"
-                fill="#ffffff"
-                opacity="0.9"
-              ></ellipse>
-            </g>
-          </g>
-        </svg>
+      ))}
+      <div class="story-step finale">
+        <div class="container">
+          <div class="find" data-reveal>
+            <div>
+              <h2 id="find-heading" class="display">
+                {t.find}
+              </h2>
+              <p>{t.findText}</p>
+            </div>
+            <form method="get" action={catalog} role="search">
+              <label>
+                {t.findLabel}
+                <input name="q" type="search" maxlength="200" required />
+              </label>
+              <button class="button" type="submit">
+                {t.findButton}
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -215,26 +257,6 @@ const catalog = `/${locale}/catalog/`;
       </section>
     )}
 
-    <section class="container block" aria-labelledby="find-heading">
-      <div class="find" data-reveal>
-        <div>
-          <h2 id="find-heading" class="display">
-            {t.find}
-          </h2>
-          <p>{t.findText}</p>
-        </div>
-        <form method="get" action={catalog} role="search">
-          <label>
-            {t.findLabel}
-            <input name="q" type="search" maxlength="200" required />
-          </label>
-          <button class="button" type="submit">
-            {t.findButton}
-          </button>
-        </form>
-      </div>
-    </section>
-
     <div class="container block facts">
       {t.facts.map((fact) => (
         <section data-reveal>
@@ -247,6 +269,119 @@ const catalog = `/${locale}/catalog/`;
   <StoreFooter locale={locale} />
 </Layout>
 <style>
+  /* История главной. Без 3D это обычные блоки на графитовой полосе: первый экран с
+     картинкой, две главы и поиск. С 3D (класс story--live ставит HiveStory) сцена
+     прилипает к экрану, а шаги проезжают поверх неё: улей, его части, рамка, соты. */
+  .story {
+    position: relative;
+    background: var(--color-night);
+    color: #ffffff;
+    --color-focus: var(--color-honey);
+  }
+  .story-stage {
+    display: none;
+  }
+  .chapter {
+    padding-block: var(--space-xl);
+    border-top: 1px solid var(--color-night-line);
+  }
+  .chapter-inner {
+    display: grid;
+    gap: var(--space-md);
+    justify-items: start;
+  }
+  .chapter .label {
+    margin: 0;
+  }
+  .chapter h2 {
+    margin: 0;
+    max-width: 20ch;
+    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+  .chapter-text {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--color-night-text);
+    font-size: var(--text-lead);
+  }
+  .chapter-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--color-honey);
+    font-weight: 700;
+  }
+  .finale {
+    padding-block: var(--space-lg) var(--space-2xl);
+  }
+  .story--live .story-stage {
+    display: block;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100svh;
+    margin-bottom: -100vh;
+    margin-bottom: -100svh;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .story--live .story-step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+    min-height: 100svh;
+    padding-block: var(--space-xl);
+    border: 0;
+    background: linear-gradient(
+      90deg,
+      rgb(23 21 15 / 0.72),
+      rgb(23 21 15 / 0) 55%
+    );
+  }
+  .story--live .art {
+    display: none;
+  }
+  .story--live .hero-text {
+    flex: 0 1 40rem;
+  }
+  .story--live .find {
+    max-width: 46rem;
+    background: rgb(23 21 15 / 0.88);
+    color: #ffffff;
+  }
+  .story--live .find p {
+    color: var(--color-night-text);
+  }
+  .story--live .find form {
+    color: var(--color-ink);
+  }
+  @media (max-width: 47.99rem) {
+    /* На телефоне сцена сверху; затемнение только под текстом, чтобы не закрывать сцену. */
+    .story--live .story-step {
+      align-items: flex-start;
+      padding-top: 46svh;
+      background: none;
+    }
+    .story--live .story-step > .container {
+      position: relative;
+      z-index: 0;
+    }
+    .story--live .story-step > .container::before {
+      content: '';
+      position: absolute;
+      inset: -3rem calc(-1 * var(--space-md)) -2rem;
+      z-index: -1;
+      background: linear-gradient(
+        180deg,
+        rgb(23 21 15 / 0) 0,
+        rgb(23 21 15 / 0.9) 3rem
+      );
+    }
+  }
   .hero {
     background: var(--color-night);
     color: #ffffff;
