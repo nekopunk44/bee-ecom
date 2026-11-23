@@ -149,6 +149,20 @@ test('the home page tells the hive story in 3D while scrolling', async ({
   // В конце истории поиск по-прежнему работает поверх сот.
   await page.getByLabel('Что ищете').scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: 'Найти' })).toBeVisible();
+  // Сцена кончается вместе с историей и не закрывает каталог под ней.
+  await page
+    .getByRole('heading', { name: 'Каталог', level: 2 })
+    .scrollIntoViewIfNeeded();
+  const stageBelowStory = await page.evaluate(() => {
+    const stage = document.querySelector('[data-story-stage]');
+    const story = document.querySelector('[data-story]');
+    if (!stage || !story) return Number.NaN;
+    return (
+      stage.getBoundingClientRect().bottom -
+      story.getBoundingClientRect().bottom
+    );
+  });
+  expect(stageBelowStory).toBeLessThanOrEqual(0);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
