@@ -3,6 +3,7 @@ import Layout from '../../../layouts/Layout.astro';
 import StoreHeader from '../../../components/StoreHeader.astro';
 import StoreFooter from '../../../components/StoreFooter.astro';
 import ProductCard from '../../../components/ProductCard.astro';
+import CombField from '../../../components/CombField.astro';
 import { isLocale } from '../../../i18n';
 import { catalogApi, catalogText } from '../../../lib/catalog';
 import type { components } from '@bee/api-client';
@@ -182,6 +183,7 @@ const refined =
               </div>
             ) : (
               <div class="state">
+                <CombField />
                 <p>{t.empty}</p>
                 <a class="button ghost" href={`/${locale}/catalog/`}>
                   {t.clear}
