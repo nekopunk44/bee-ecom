@@ -42,11 +42,12 @@ export const messages = {
     catalog: 'Каталог',
     all: 'Все товары',
     fresh: 'Новое в каталоге',
-    freshNote: 'Последние товары, добавленные в каталог.',
     find: 'Знаете, что нужно? Найдём по названию',
     findText:
       'Ищите по названию, системе улья или назначению: «рамка 435», «дымарь», «вощина».',
+    findEyebrow: 'Поиск по каталогу',
     findLabel: 'Что ищете',
+    findPlaceholder: 'Например, рамка 435',
     findButton: 'Найти',
     facts: [
       {
@@ -103,11 +104,12 @@ export const messages = {
     catalog: 'Catalog',
     all: 'Toate produsele',
     fresh: 'Noutăți în catalog',
-    freshNote: 'Cele mai noi produse adăugate în catalog.',
     find: 'Știi ce îți trebuie? Căutăm după denumire',
     findText:
       'Caută după denumire, tipul stupului sau utilizare: „ramă 435”, „afumător”, „fagure artificial”.',
+    findEyebrow: 'Căutare în catalog',
     findLabel: 'Ce cauți',
+    findPlaceholder: 'De exemplu, ramă 435',
     findButton: 'Caută',
     facts: [
       {
