@@ -60,9 +60,9 @@ function cartServer(page: Page) {
   ]).then(() => items);
 }
 
-/** Сота перелетает к корзину и убирается сама: живёт она недолго. */
-function flyingHoneycomb(page: Page) {
-  return page.locator('body > div[aria-hidden="true"]');
+/** Пчела летит к корзине и убирается сама: живёт она недолго. */
+function flyingBee(page: Page) {
+  return page.locator('body > .flying-bee[aria-hidden="true"]');
 }
 
 /** Снимок computed style: expect.poll дождётся нужного значения. */
@@ -190,7 +190,7 @@ test('every reveal block becomes visible after it is scrolled into view', async 
   }
 });
 
-test('reduced motion skips the flying honeycomb on add to cart', async ({
+test('reduced motion skips the flying bee on add to cart', async ({
   browser,
 }) => {
   const { context, page } = await open(browser, { reducedMotion: 'reduce' });
@@ -200,22 +200,64 @@ test('reduced motion skips the flying honeycomb on add to cart', async ({
   await page.getByRole('button', { name: 'В корзину' }).click();
   await expect(page.getByRole('button', { name: 'Добавлено' })).toBeVisible();
   await expect.poll(() => items.get(variant.id)).toBe(1);
-  await expect(flyingHoneycomb(page)).toHaveCount(0);
+  await expect(flyingBee(page)).toHaveCount(0);
   await context.close();
 });
 
-test('without reduced motion the flying honeycomb flies for a moment', async ({
+test('without reduced motion a bee flies to the cart for a moment', async ({
   browser,
 }) => {
   const { context, page } = await open(browser);
   const items = await cartServer(page);
   await page.goto(`${storefront}/ru/catalog/${product.slug}/`);
   await hydrated(page);
+  // Пчела живёт меньше секунды: ждём её появления с самого нажатия, а не опросом.
+  const flight = flyingBee(page).waitFor({ state: 'attached', timeout: 3000 });
   await page.getByRole('button', { name: 'В корзину' }).click();
-  await expect
-    .poll(() => flyingHoneycomb(page).count(), { timeout: 2000 })
-    .toBe(1);
+  await flight;
   await expect(page.getByRole('button', { name: 'Добавлено' })).toBeVisible();
   await expect.poll(() => items.get(variant.id)).toBe(1);
+  await context.close();
+});
+
+test('catalog cards tilt toward the pointer unless motion is reduced', async ({
+  browser,
+}) => {
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    const { context, page } = await open(browser, { reducedMotion });
+    await page.goto(`${storefront}/ru/catalog/`);
+    const picture = page.locator('[data-tilt]').first();
+    await picture.scrollIntoViewIfNeeded();
+    await page.waitForLoadState('networkidle');
+    const box = await picture.boundingBox();
+    if (!box) throw new Error('product card is not visible');
+    await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.2);
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.15);
+    const tilt = () =>
+      picture.evaluate((el) =>
+        (el as HTMLElement).style.getPropertyValue('--tilt-y'),
+      );
+    if (reducedMotion === 'reduce') {
+      await page.waitForTimeout(300);
+      expect(await tilt()).toBe('');
+    } else {
+      await expect.poll(tilt).toMatch(/^\d/);
+    }
+    await context.close();
+  }
+});
+
+test('an empty search shows living honeycomb instead of a bare message', async ({
+  browser,
+}) => {
+  const { context, page } = await open(browser);
+  await page.goto(
+    `${storefront}/ru/catalog/?q=${encodeURIComponent('ничего-такого-нет')}`,
+  );
+  await expect(page.getByText('Товары не найдены')).toBeVisible();
+  const comb = page.locator('canvas[data-comb-field]');
+  await expect(comb).toBeVisible();
+  const box = await comb.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThan(100);
   await context.close();
 });
