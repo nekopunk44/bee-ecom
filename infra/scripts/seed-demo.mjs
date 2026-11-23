@@ -6,7 +6,7 @@
 //   (or put both into .env.local; DEMO_ADMIN_URL defaults to the Vercel admin)
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { categories, products, warehouses } from '../demo/catalog.mjs';
+import { brands, categories, products, warehouses } from '../demo/catalog.mjs';
 
 const origin = (
   process.env.DEMO_ADMIN_URL ?? 'https://bee-ecom-admin.vercel.app'
@@ -68,6 +68,18 @@ const metadata = await must('/catalog/metadata?locale=ru');
 const categoryIds = new Map(
   metadata.categories.map((category) => [category.slug, category.id]),
 );
+const brandIds = new Map(
+  metadata.brands.map((brand) => [brand.slug, brand.id]),
+);
+for (const brand of brands) {
+  if (brandIds.has(brand.slug)) continue;
+  const created = await must('/admin/brands', {
+    method: 'POST',
+    body: { slug: brand.slug, name: brand.name },
+  });
+  brandIds.set(brand.slug, created.id);
+  console.log(`Brand ${brand.slug} created`);
+}
 for (const category of categories) {
   if (categoryIds.has(category.slug)) continue;
   const created = await must('/admin/categories', {
@@ -129,7 +141,7 @@ for (const product of products) {
     body: {
       slug: product.slug,
       status: 'active',
-      brandId: null,
+      brandId: brandIds.get(product.brand) ?? null,
       categoryIds: [categoryIds.get(product.category)],
       mediaIds: media ? [media] : [],
       translations: { ru: product.ru, ro: product.ro },

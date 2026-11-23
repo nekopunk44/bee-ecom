@@ -4,6 +4,7 @@ import StoreHeader from '../../../components/StoreHeader.astro';
 import StoreFooter from '../../../components/StoreFooter.astro';
 import ProductCard from '../../../components/ProductCard.astro';
 import CombField from '../../../components/CombField.astro';
+import CategoryIcon from '../../../components/CategoryIcon.astro';
 import { isLocale } from '../../../i18n';
 import { catalogApi, catalogText } from '../../../lib/catalog';
 import type { components } from '@bee/api-client';
@@ -61,10 +62,66 @@ const pageLink = (value: number) => {
   return `?${query}`;
 };
 const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 12));
-// На телефоне фильтры свёрнуты, но раскрываются сами, если покупатель уже что-то выбрал.
+// На телефоне фильтры свёрнуты, но открыты сразу, если покупатель уже что-то выбрал.
 const refined =
   ['category', 'brand', 'min', 'max'].some((key) => params.get(key)) ||
   sort !== 'newest';
+/** Та же выдача с другими параметрами; номер страницы сбрасывается на первую. */
+const link = (changes: Record<string, string | null>) => {
+  const query = new URLSearchParams(params);
+  query.delete('page');
+  for (const [key, value] of Object.entries(changes)) {
+    if (value) query.set(key, value);
+    else query.delete(key);
+  }
+  for (const [key, value] of [...query]) if (!value) query.delete(key);
+  const text = query.toString();
+  return text ? `?${text}` : `/${locale}/catalog/`;
+};
+const lei = new Intl.NumberFormat(locale === 'ro' ? 'ro-MD' : 'ru-MD', {
+  maximumFractionDigits: 0,
+});
+const priceLabel = (min: string | null, max: string | null) =>
+  min && max
+    ? `${lei.format(Number(min))}–${lei.format(Number(max))} L`
+    : min
+      ? `${t.from} ${lei.format(Number(min))} L`
+      : `${t.upTo} ${lei.format(Number(max ?? 0))} L`;
+const minPrice = params.get('min') || null;
+const maxPrice = params.get('max') || null;
+const presets = (
+  [
+    [null, '200'],
+    ['200', '1000'],
+    ['1000', '3000'],
+    ['3000', null],
+  ] as const
+).map(([min, max]) => ({
+  label: priceLabel(min, max),
+  href: link({ min, max }),
+  active: minPrice === min && maxPrice === max,
+}));
+const quote = (text: string) => (locale === 'ro' ? `„${text}”` : `«${text}»`);
+const currentCategory = metadata?.categories.find(
+  (c) => c.id === params.get('category'),
+);
+const currentBrand = metadata?.brands.find((b) => b.id === params.get('brand'));
+// Выбранные фильтры чипами над товарами: каждый убирается своей ссылкой.
+const chips = [
+  params.get('q') && {
+    label: quote(params.get('q') ?? ''),
+    href: link({ q: null }),
+  },
+  currentCategory && {
+    label: currentCategory.name,
+    href: link({ category: null }),
+  },
+  currentBrand && { label: currentBrand.name, href: link({ brand: null }) },
+  (minPrice || maxPrice) && {
+    label: priceLabel(minPrice, maxPrice),
+    href: link({ min: null, max: null }),
+  },
+].filter((chip): chip is { label: string; href: string } => Boolean(chip));
 ---
 
 <Layout
@@ -76,99 +133,204 @@ const refined =
   <StoreHeader locale={locale} />
   <main id="main" class="container">
     <div class="heading">
-      <div>
-        <p class="eyebrow rise">{t.catalog}</p>
-        <h1 class="display rise" data-step="1">
-          {t.title}
-        </h1>
-      </div>
-      {!failed && (
-        <p class="found">
-          {t.found}: <strong>{data?.total}</strong>
-        </p>
-      )}
+      <p class="eyebrow rise">{t.catalog}</p>
+      <h1 class="display rise" data-step="1">
+        {t.title}
+      </h1>
     </div>
     <div class="layout">
-      <form class="filters" method="get" role="search">
-        <label class="search">
-          {t.search}
-          <input
-            name="q"
-            value={params.get('q') ?? ''}
-            maxlength="200"
-            placeholder={t.query}
-          />
-        </label>
-        <details class="more" open={refined}>
-          <summary>{t.refine}</summary>
-          <div class="fields">
-            <label>
-              {t.category}
-              <select name="category">
-                <option value="">{t.all}</option>
-                {metadata?.categories.map((c) => (
-                  <option
+      <form class="filters" method="get" role="search" data-filters>
+        <input
+          id="filters-open"
+          class="filters-open visually-hidden"
+          type="checkbox"
+          checked={refined}
+        />
+        <div class="filters-top">
+          <label class="search-field">
+            <span class="visually-hidden">{t.search}</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <circle
+                cx="11"
+                cy="11"
+                r="6.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              ></circle>
+              <path
+                d="M16 16l4.5 4.5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              ></path>
+            </svg>
+            <input
+              name="q"
+              type="search"
+              value={params.get('q') ?? ''}
+              maxlength="200"
+              placeholder={t.query}
+            />
+          </label>
+          <label for="filters-open" class="filters-toggle">
+            {t.filters}
+            {chips.length > 0 && <b>{chips.length}</b>}
+          </label>
+        </div>
+        <div class="filters-panel">
+          <fieldset class="group">
+            <legend>{t.category}</legend>
+            <div class="options">
+              <label class="option">
+                <input
+                  class="visually-hidden"
+                  type="radio"
+                  name="category"
+                  value=""
+                  checked={!params.get('category')}
+                />
+                <CategoryIcon slug="" />
+                <span>{t.allProducts}</span>
+              </label>
+              {metadata?.categories.map((c) => (
+                <label class="option">
+                  <input
+                    class="visually-hidden"
+                    type="radio"
+                    name="category"
                     value={c.id}
-                    selected={params.get('category') === c.id}
-                  >
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t.brand}
-              <select name="brand">
-                <option value="">{t.all}</option>
+                    checked={params.get('category') === c.id}
+                  />
+                  <CategoryIcon slug={c.slug} />
+                  <span>{c.name}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {(metadata?.brands.length ?? 0) > 0 && (
+            <fieldset class="group">
+              <legend>{t.brand}</legend>
+              <div class="pills">
+                <label class="pill">
+                  <input
+                    class="visually-hidden"
+                    type="radio"
+                    name="brand"
+                    value=""
+                    checked={!params.get('brand')}
+                  />
+                  <span>{t.all}</span>
+                </label>
                 {metadata?.brands.map((b) => (
-                  <option value={b.id} selected={params.get('brand') === b.id}>
-                    {b.name}
-                  </option>
+                  <label class="pill">
+                    <input
+                      class="visually-hidden"
+                      type="radio"
+                      name="brand"
+                      value={b.id}
+                      checked={params.get('brand') === b.id}
+                    />
+                    <span>{b.name}</span>
+                  </label>
                 ))}
-              </select>
-            </label>
-            <label>
-              {t.min}
-              <input
-                name="min"
-                type="number"
-                min="0"
-                max="1000000"
-                step="0.01"
-                value={params.get('min') ?? ''}
-              />
-            </label>
-            <label>
-              {t.max}
-              <input
-                name="max"
-                type="number"
-                min="0"
-                max="1000000"
-                step="0.01"
-                value={params.get('max') ?? ''}
-              />
-            </label>
-            <label class="sort">
-              {t.sort}
-              <select name="sort">
-                {sortValues.map((s) => (
-                  <option value={s} selected={s === sort}>
-                    {t[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
+              </div>
+            </fieldset>
+          )}
+          <fieldset class="group">
+            <legend>{t.priceRange}</legend>
+            <div class="range">
+              <label>
+                <span class="visually-hidden">{t.min}</span>
+                <input
+                  name="min"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="1000000"
+                  step="1"
+                  placeholder={t.from}
+                  value={params.get('min') ?? ''}
+                />
+              </label>
+              <span aria-hidden="true">–</span>
+              <label>
+                <span class="visually-hidden">{t.max}</span>
+                <input
+                  name="max"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="1000000"
+                  step="1"
+                  placeholder={t.upTo}
+                  value={params.get('max') ?? ''}
+                />
+              </label>
+            </div>
+            <ul class="presets">
+              {presets.map((preset) => (
+                <li>
+                  <a
+                    href={preset.href}
+                    aria-current={preset.active ? 'true' : undefined}
+                  >
+                    {preset.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+          {sort !== 'newest' && (
+            <input type="hidden" name="sort" value={sort} />
+          )}
+          <div class="actions">
+            <button class="button honey" type="submit">
+              {t.apply}
+            </button>
+            {chips.length > 0 && (
+              <a href={`/${locale}/catalog/`}>{t.clearAll}</a>
+            )}
           </div>
-        </details>
-        <div class="actions">
-          <button class="button" type="submit">
-            {t.apply}
-          </button>
-          <a href={`/${locale}/catalog/`}>{t.clear}</a>
         </div>
       </form>
       <div class="results">
+        <div class="results-bar">
+          <div class="summary">
+            {!failed && (
+              <p class="found">
+                {t.found}: <strong>{data?.total}</strong>
+              </p>
+            )}
+            {chips.length > 0 && (
+              <ul class="chips" aria-label={t.activeFilters}>
+                {chips.map((chip) => (
+                  <li>
+                    <a
+                      href={chip.href}
+                      aria-label={`${t.remove}: ${chip.label}`}
+                    >
+                      {chip.label}
+                      <span aria-hidden="true">×</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {!failed && (
+            <nav class="sorting" aria-label={t.sort}>
+              {sortValues.map((value) => (
+                <a
+                  href={link({ sort: value === 'newest' ? null : value })}
+                  aria-current={value === sort ? 'true' : undefined}
+                >
+                  {t[value]}
+                </a>
+              ))}
+            </nav>
+          )}
+        </div>
         {failed ? (
           <div class="state" role="status">
             {t.unavailable}
@@ -206,16 +368,39 @@ const refined =
   </main>
   <StoreFooter locale={locale} />
 </Layout>
+<script>
+  /* Фильтры применяются сразу после выбора категории или бренда. Пустые поля не
+     отправляются, чтобы адрес выдачи оставался коротким. Без JavaScript работает
+     кнопка «Показать товары». */
+  for (const form of document.querySelectorAll<HTMLFormElement>(
+    'form[data-filters]',
+  )) {
+    form.addEventListener('change', (event) => {
+      if (
+        event.target instanceof HTMLInputElement &&
+        event.target.type === 'radio'
+      )
+        form.requestSubmit();
+    });
+    form.addEventListener('submit', () => {
+      for (const field of form.querySelectorAll<HTMLInputElement>(
+        'input[name]',
+      ))
+        if (!field.value && (field.type !== 'radio' || field.checked))
+          field.disabled = true;
+    });
+  }
+  // Назад из выдачи: поля снова доступны, если страница вернулась из кэша.
+  window.addEventListener('pageshow', () => {
+    for (const field of document.querySelectorAll<HTMLInputElement>(
+      'form[data-filters] input[disabled]',
+    ))
+      field.disabled = false;
+  });
+</script>
 <style>
   main {
     padding-top: var(--space-xl);
-  }
-  .heading {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: end;
-    gap: var(--space-sm) var(--space-lg);
   }
   .eyebrow {
     margin: 0 0 var(--space-sm);
@@ -228,6 +413,211 @@ const refined =
     letter-spacing: -0.04em;
     text-wrap: balance;
   }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
+  }
+
+  /* Панель фильтров: песочная карточка, разделы с тонкими линиями между ними. */
+  .filters {
+    display: grid;
+    gap: var(--space-md);
+    align-content: start;
+    padding: var(--space-md);
+    border-radius: var(--radius-lg);
+    background: var(--color-sand);
+  }
+  .filters-top {
+    display: flex;
+    gap: var(--space-sm);
+  }
+  .search-field {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+  .search-field svg {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    translate: 0 -50%;
+    color: var(--color-muted);
+    pointer-events: none;
+  }
+  .search-field input {
+    width: 100%;
+    min-height: 3rem;
+    padding-left: 2.75rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-paper);
+  }
+  .filters-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin: 0;
+    padding-inline: 1.1rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-ink);
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .filters-toggle b {
+    display: grid;
+    place-items: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-honey);
+    color: var(--color-ink);
+    font-size: 0.8125rem;
+  }
+  .filters-open:focus-visible ~ .filters-top .filters-toggle {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+  .filters-panel {
+    display: none;
+    gap: var(--space-md);
+  }
+  .filters-open:checked ~ .filters-panel {
+    display: grid;
+  }
+  .group {
+    display: grid;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: var(--space-md) 0 0;
+    border: 0;
+    border-top: 1px solid var(--color-line);
+  }
+  .group legend {
+    float: left;
+    width: 100%;
+    margin-bottom: var(--space-sm);
+    padding: 0;
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .options {
+    display: grid;
+    gap: 0.25rem;
+  }
+  .option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--ease-out);
+  }
+  .option :global(svg) {
+    flex: none;
+    width: 1.9rem;
+    height: 2.15rem;
+  }
+  .option:hover {
+    background: var(--color-paper);
+  }
+  .option:has(input:checked) {
+    background: var(--color-paper);
+    box-shadow: inset 3px 0 0 var(--color-honey);
+    font-weight: 700;
+  }
+  .option:has(input:focus-visible),
+  .pill:has(input:focus-visible) {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  .pills,
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pill {
+    margin: 0;
+    cursor: pointer;
+  }
+  .pill span,
+  .presets a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding-inline: 0.9rem;
+    border: 2px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .pill:has(input:checked) span,
+  .presets a[aria-current] {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: #ffffff;
+  }
+  .pill:hover span,
+  .presets a:hover {
+    border-color: var(--color-ink);
+  }
+  .range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--color-muted);
+  }
+  .range label {
+    margin: 0;
+  }
+  .range input {
+    width: 100%;
+    background: var(--color-paper);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+    padding-top: var(--space-xs);
+    font-weight: 600;
+  }
+  .actions .button {
+    flex: 1 1 auto;
+  }
+
+  /* Над товарами: сколько нашлось, выбранные фильтры чипами и сортировка. */
+  .results-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm) var(--space-lg);
+    margin-bottom: var(--space-lg);
+  }
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    min-width: 0;
+  }
   .found {
     margin: 0;
     color: var(--color-muted);
@@ -235,74 +625,72 @@ const refined =
   .found strong {
     color: var(--color-ink);
   }
-  .layout {
-    display: grid;
-    gap: var(--space-lg);
-    margin-top: var(--space-lg);
-  }
-  .filters {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 var(--space-md);
-    align-content: start;
-    padding: var(--space-md) var(--space-lg) var(--space-lg);
-    border-radius: var(--radius-md);
-    background: var(--color-sand);
-  }
-  .filters label {
-    font-size: var(--text-sm);
-  }
-  .filters input,
-  .filters select {
-    width: 100%;
-    background: var(--color-paper);
-  }
-  .search,
-  .more,
-  .sort,
-  .actions {
-    grid-column: 1 / -1;
-  }
-  .more summary {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    width: fit-content;
-    min-height: 2.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    list-style: none;
-  }
-  .more summary::-webkit-details-marker {
-    display: none;
-  }
-  .more summary::after {
-    content: '+';
-    display: grid;
-    place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-paper);
-    font-weight: 600;
-    line-height: 1;
-  }
-  .more[open] summary::after {
-    content: '−';
-  }
-  .fields {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 var(--space-md);
-  }
-  .actions {
+  .chips {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-sm) var(--space-md);
-    margin-top: var(--space-sm);
-    font-weight: 600;
+    gap: var(--space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
+  .chips a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.25rem;
+    padding: 0 0.75rem 0 1rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-honey-soft);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .chips a span {
+    display: grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-ink);
+    color: #ffffff;
+    font-size: 0.875rem;
+    line-height: 1;
+  }
+  .chips a:hover span {
+    background: var(--color-honey);
+    color: var(--color-ink);
+  }
+  .sorting {
+    display: flex;
+    gap: 0.25rem;
+    max-width: 100%;
+    padding: 0.25rem;
+    overflow-x: auto;
+    border-radius: var(--radius-pill);
+    background: var(--color-sand);
+  }
+  .sorting a {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding-inline: 0.9rem;
+    border-radius: var(--radius-pill);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .sorting a:hover {
+    color: var(--color-ink);
+  }
+  .sorting a[aria-current] {
+    background: var(--color-ink);
+    color: #ffffff;
+  }
+
   .products {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -347,6 +735,7 @@ const refined =
   .pagination a:hover {
     border-color: var(--color-ink);
   }
+  /* На широком экране фильтры всегда открыты и едут вместе с прокруткой. */
   @media (min-width: 64rem) {
     .layout {
       grid-template-columns: 19rem minmax(0, 1fr);
@@ -356,18 +745,14 @@ const refined =
     .filters {
       position: sticky;
       top: var(--space-md);
+      padding: var(--space-lg);
     }
-  }
-  /* На широком экране боковая панель всегда раскрыта. Где ::details-content не поддерживается,
-     остаётся обычный переключатель — фильтры не теряются. */
-  @supports selector(::details-content) {
-    @media (min-width: 64rem) {
-      .more summary {
-        display: none;
-      }
-      .more::details-content {
-        content-visibility: visible;
-      }
+    .filters-toggle {
+      display: none;
+    }
+    .filters-panel,
+    .filters-open:checked ~ .filters-panel {
+      display: grid;
     }
   }
 </style>

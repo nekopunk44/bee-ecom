@@ -24,7 +24,7 @@ test('catalog search and translated product render without JavaScript', async ({
   );
   await page.goto('http://127.0.0.1:4321/ru/catalog/');
   await page.getByLabel('Поиск', { exact: true }).fill('нет-товара');
-  await page.getByRole('button', { name: 'Применить' }).click();
+  await page.getByRole('button', { name: 'Показать товары' }).click();
   await expect(
     page.getByText('Товары не найдены.', { exact: false }),
   ).toBeVisible();
@@ -130,4 +130,32 @@ test('read-only user sees catalog without mutation controls', async ({
   await expect(page.getByRole('button', { name: 'Новый товар' })).toHaveCount(
     0,
   );
+});
+test('catalog filters apply at once and show as removable chips', async ({
+  page,
+}) => {
+  await page.goto('http://127.0.0.1:4321/ru/catalog/');
+  // Категория применяется сразу, без кнопки; пустые поля в адрес не попадают.
+  await page.getByText('Ульи', { exact: true }).click();
+  await expect(page).toHaveURL(/\/ru\/catalog\/\?category=[^&]+$/);
+  const chips = page.getByRole('list', { name: 'Выбранные фильтры' });
+  await expect(
+    chips.getByRole('link', { name: 'Убрать фильтр: Ульи' }),
+  ).toBeVisible();
+  // Быстрый диапазон цены добавляется к категории.
+  await page.getByRole('link', { name: '200–1 000 L', exact: true }).click();
+  await expect(page).toHaveURL(/min=200&max=1000/);
+  await expect(
+    page.getByRole('link', { name: '200–1 000 L', exact: true }),
+  ).toHaveAttribute('aria-current', 'true');
+  // Сортировка кнопками над товарами сохраняет фильтры.
+  await page.getByRole('link', { name: 'Цена по возрастанию' }).click();
+  await expect(page).toHaveURL(/sort=price_asc/);
+  await expect(page).toHaveURL(/category=/);
+  // Крестик на чипе убирает только свой фильтр.
+  await chips.getByRole('link', { name: 'Убрать фильтр: Ульи' }).click();
+  await expect(page).not.toHaveURL(/category=/);
+  await expect(page).toHaveURL(/min=200/);
+  await page.getByRole('link', { name: 'Сбросить всё' }).click();
+  await expect(page).toHaveURL(/\/ru\/catalog\/$/);
 });
