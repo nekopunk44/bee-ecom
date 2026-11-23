@@ -26,7 +26,8 @@ test('storefront remains usable without JavaScript and shares locale routes', as
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
     'O stupină bună',
   );
-  await expect(page.locator('script')).toHaveCount(0);
+  // Главная не держит встроенных скриптов: только отложенный модуль 3D-истории.
+  await expect(page.locator('script:not([type="module"][src])')).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath('storefront-desktop.png'),
     fullPage: true,

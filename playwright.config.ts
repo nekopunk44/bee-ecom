@@ -6,7 +6,12 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
-  use: { trace: 'retain-on-failure' },
+  use: {
+    trace: 'retain-on-failure',
+    // Без видеокарты Chromium отдаёт WebGL только программному SwiftShader, и то по флагу:
+    // так тесты видят 3D-историю главной, как её видит обычный браузер.
+    launchOptions: { args: ['--enable-unsafe-swiftshader'] },
+  },
   webServer: [
     {
       command: 'node tests/fixtures/catalog-server.mjs',
