@@ -1,0 +1,437 @@
+---
+import { BUCKETS, STEPS, priceScale } from '../lib/price-scale';
+
+interface Props {
+  locale: string;
+  /** Границы из адреса, в леях; пустая строка — граница не задана. */
+  min: string;
+  max: string;
+  /** Сводка цен от API; у старого API её нет, тогда остаются только поля. */
+  price?: { min: number; max: number; histogram: number[] } | null;
+  text: {
+    legend: string;
+    min: string;
+    max: string;
+    from: string;
+    upTo: string;
+    lower: string;
+    upper: string;
+  };
+}
+const { locale, min, max, price, text } = Astro.props;
+const lei = new Intl.NumberFormat(locale === 'ro' ? 'ro-MD' : 'ru-MD', {
+  maximumFractionDigits: 0,
+});
+const low = price ? Math.floor(price.min / 100) : 0;
+const high = price ? Math.ceil(price.max / 100) : 0;
+// Ползунок есть, только когда цены в выдаче разные.
+const live = Boolean(price) && high > low;
+const scale = priceScale(low, high);
+const from = live && min ? scale.position(Number(min)) : 0;
+const to = live && max ? scale.position(Number(max)) : 1;
+
+/* Гистограмма — рамка сот: столбик ячеек на каждую корзину цен, нечётные столбики
+   сдвинуты на полъячейки, как в настоящих сотах. Сколько товаров, столько ячеек
+   залито (до пяти); ячейки в выбранном диапазоне медовые. */
+const LEVELS = 5;
+const R = 6;
+const H = Math.sqrt(3) * R;
+const width = 2 * R + 1.5 * R * (BUCKETS - 1);
+const height = LEVELS * H + H / 2;
+const histogram = price?.histogram ?? [];
+const peak = Math.max(1, ...histogram);
+const hexagon = (x: number, y: number, r: number) =>
+  [0, 60, 120, 180, 240, 300]
+    .map((angle) => {
+      const radians = (angle * Math.PI) / 180;
+      return `${(x + r * Math.cos(radians)).toFixed(2)},${(y + r * Math.sin(radians)).toFixed(2)}`;
+    })
+    .join(' ');
+const columns = Array.from({ length: BUCKETS }, (_, index) => {
+  const count = histogram[index] ?? 0;
+  const filled = count ? Math.max(1, Math.round((count / peak) * LEVELS)) : 0;
+  const centre = (index + 0.5) / BUCKETS;
+  const x = R + 1.5 * R * index;
+  const shift = (index % 2) * (H / 2);
+  return {
+    selected: centre >= from && centre <= to,
+    cells: Array.from({ length: LEVELS }, (_, level) => ({
+      points: hexagon(x, height - H / 2 - shift - level * H, R - 0.9),
+      filled: level < filled,
+    })),
+  };
+});
+---
+
+<fieldset
+  class="price"
+  data-price
+  data-locale={locale}
+  data-low={low}
+  data-high={high}
+>
+  <legend>{text.legend}</legend>
+  <div class="readout">
+    <label>
+      <span class="visually-hidden">{text.min}</span>
+      <input
+        name="min"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        maxlength="9"
+        placeholder={price ? lei.format(low) : text.from}
+        value={min ? lei.format(Number(min)) : ''}
+      />
+    </label>
+    <span aria-hidden="true">—</span>
+    <label>
+      <span class="visually-hidden">{text.max}</span>
+      <input
+        name="max"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        maxlength="9"
+        placeholder={price ? lei.format(high) : text.upTo}
+        value={max ? lei.format(Number(max)) : ''}
+      />
+    </label>
+    <span class="unit" aria-hidden="true">
+      L
+    </span>
+  </div>
+  {price && (
+    <svg
+      class="comb"
+      viewBox={`0 0 ${width.toFixed(2)} ${height.toFixed(2)}`}
+      aria-hidden="true"
+    >
+      {columns.map((column, index) => (
+        <g data-column={index} data-selected={column.selected ? '' : undefined}>
+          {column.cells.map((cell) => (
+            <polygon
+              points={cell.points}
+              class={cell.filled ? 'full' : undefined}
+            />
+          ))}
+        </g>
+      ))}
+    </svg>
+  )}
+  {live && (
+    <div class="slider" data-slider>
+      <span class="slider-fill" />
+      <input
+        type="range"
+        min="0"
+        max={STEPS}
+        step="1"
+        value={Math.round(from * STEPS)}
+        aria-label={text.lower}
+      />
+      <input
+        type="range"
+        min="0"
+        max={STEPS}
+        step="1"
+        value={Math.round(to * STEPS)}
+        aria-label={text.upper}
+      />
+    </div>
+  )}
+</fieldset>
+
+<script>
+  import { BUCKETS, STEPS, priceScale } from '../lib/price-scale';
+
+  /* Ползунок и поля «от — до» связаны в обе стороны. В адрес уходят только поля:
+     у ползунков нет имени. Крайнее положение ползунка — граница не задана. */
+  for (const box of document.querySelectorAll<HTMLElement>('[data-price]')) {
+    // Соты наливаются при загрузке: столбики слева направо, ячейки снизу вверх.
+    // Номера ячеек ставятся через CSSOM: встроенный style запрещён CSP.
+    const comb = box.querySelector<SVGElement>('.comb');
+    comb?.querySelectorAll('g').forEach((column, index) => {
+      column.style.setProperty('--column', String(index));
+      column.querySelectorAll('polygon').forEach((cell, row) => {
+        cell.style.setProperty('--row', String(row));
+      });
+    });
+    comb?.setAttribute('data-animate', '');
+    const slider = box.querySelector<HTMLElement>('[data-slider]');
+    const [lower, upper] = slider?.querySelectorAll('input') ?? [];
+    const minField = box.querySelector<HTMLInputElement>('input[name="min"]');
+    const maxField = box.querySelector<HTMLInputElement>('input[name="max"]');
+    if (!slider || !lower || !upper || !minField || !maxField) continue;
+    const scale = priceScale(Number(box.dataset.low), Number(box.dataset.high));
+    const lei = new Intl.NumberFormat(
+      box.dataset.locale === 'ro' ? 'ro-MD' : 'ru-MD',
+      { maximumFractionDigits: 0 },
+    );
+    const columns = box.querySelectorAll('[data-column]');
+    const paint = () => {
+      const from = Number(lower.value) / STEPS;
+      const to = Number(upper.value) / STEPS;
+      slider.style.setProperty('--from', String(from));
+      slider.style.setProperty('--to', String(to));
+      columns.forEach((column, index) => {
+        const centre = (index + 0.5) / BUCKETS;
+        column.toggleAttribute('data-selected', centre >= from && centre <= to);
+      });
+      lower.setAttribute(
+        'aria-valuetext',
+        `${lei.format(scale.price(from))} L`,
+      );
+      upper.setAttribute('aria-valuetext', `${lei.format(scale.price(to))} L`);
+      // Оба ползунка у правого края: сверху нижний, иначе его не сдвинуть.
+      lower.toggleAttribute('data-front', from > 0.5);
+    };
+    const fromSlider = (event: Event) => {
+      if (Number(lower.value) > Number(upper.value)) {
+        if (event.target === lower) lower.value = upper.value;
+        else upper.value = lower.value;
+      }
+      const from = Number(lower.value) / STEPS;
+      const to = Number(upper.value) / STEPS;
+      minField.value = from > 0 ? lei.format(scale.price(from)) : '';
+      maxField.value = to < 1 ? lei.format(scale.price(to)) : '';
+      paint();
+    };
+    const fromFields = () => {
+      const read = (field: HTMLInputElement) =>
+        Number(field.value.replace(/\D/g, ''));
+      lower.value = String(
+        read(minField) ? Math.round(scale.position(read(minField)) * STEPS) : 0,
+      );
+      upper.value = String(
+        read(maxField)
+          ? Math.round(scale.position(read(maxField)) * STEPS)
+          : STEPS,
+      );
+      paint();
+    };
+    lower.addEventListener('input', fromSlider);
+    upper.addEventListener('input', fromSlider);
+    minField.addEventListener('input', fromFields);
+    maxField.addEventListener('input', fromFields);
+    paint();
+    slider.dataset.ready = '';
+  }
+</script>
+
+<style>
+  /* Выбранное наливается мёдом: ячейки сот в диапазоне, заливка дорожки, сердцевина
+     шестигранных ручек. */
+  .price {
+    --thumb: 1.75rem;
+    display: grid;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: var(--space-md) 0 0;
+    border: 0;
+    border-top: 1px solid var(--color-line);
+  }
+  legend {
+    float: left;
+    width: 100%;
+    margin-bottom: var(--space-xs);
+    padding: 0;
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .readout label {
+    display: block;
+    margin: 0;
+  }
+  .readout input {
+    width: 5.5ch;
+    field-sizing: content;
+    min-width: 1ch;
+    padding: 0 0 0.1rem;
+    border: 0;
+    border-bottom: 2px dashed var(--color-muted);
+    border-radius: 0;
+    background: none;
+    color: var(--color-ink);
+    font: inherit;
+    transition:
+      border-color var(--motion-fast) var(--ease-standard),
+      background var(--motion-fast) var(--ease-standard);
+  }
+  @supports (field-sizing: content) {
+    .readout input {
+      width: auto;
+    }
+  }
+  .readout input::placeholder {
+    color: var(--color-muted);
+    opacity: 0.75;
+  }
+  .readout input:hover {
+    border-bottom-color: var(--color-ink);
+  }
+  .readout input:focus {
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-ink);
+    background: var(--color-honey-soft);
+    outline: none;
+  }
+  .readout > span {
+    color: var(--color-muted);
+  }
+  .readout .unit {
+    color: var(--color-ink);
+  }
+
+  .comb {
+    display: block;
+    width: calc(100% - var(--thumb));
+    height: auto;
+    margin: var(--space-xs) calc(var(--thumb) / 2) 0;
+  }
+  /* Ячейки вне диапазона — воск, чуть меньше; в диапазоне — мёд в полный размер.
+     Когда ползунок проходит столбик, мёд поднимается снизу вверх и стекает сверху. */
+  .comb polygon {
+    fill: rgb(23 21 15 / 5%);
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      fill var(--motion-normal) var(--ease-standard),
+      scale var(--motion-normal) var(--ease-standard);
+    transition-delay: calc((4 - var(--row, 0)) * 35ms);
+  }
+  .comb polygon.full {
+    fill: #d6cdb4;
+    scale: 0.82;
+  }
+  .comb [data-selected] polygon.full {
+    fill: var(--color-honey);
+    scale: 1;
+    transition-delay: calc(var(--row, 0) * 35ms);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .comb[data-animate] polygon.full {
+      animation: cell-in 520ms var(--ease-standard) backwards;
+      animation-delay: calc(var(--column, 0) * 20ms + var(--row, 0) * 60ms);
+    }
+  }
+  @keyframes cell-in {
+    from {
+      opacity: 0;
+      scale: 0.2;
+    }
+  }
+
+  .slider {
+    position: relative;
+    height: calc(var(--thumb) * 1.1);
+    margin-top: calc(var(--space-xs) * -1);
+    visibility: hidden;
+  }
+  .slider[data-ready] {
+    visibility: visible;
+  }
+  @media (scripting: none) {
+    .slider {
+      display: none;
+    }
+  }
+  .slider::before,
+  .slider-fill {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    border-radius: 2px;
+    translate: 0 -50%;
+    content: '';
+  }
+  .slider::before {
+    right: calc(var(--thumb) / 2);
+    left: calc(var(--thumb) / 2);
+    background: #ddd5bf;
+  }
+  .slider-fill {
+    right: calc(var(--thumb) / 2 + (100% - var(--thumb)) * (1 - var(--to, 1)));
+    left: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--from, 0));
+    background: var(--color-ink);
+  }
+  .slider input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    pointer-events: none;
+    appearance: none;
+  }
+  .slider input[data-front] {
+    z-index: 1;
+  }
+  .slider input:focus-visible {
+    outline: none;
+  }
+  .slider input::-webkit-slider-runnable-track {
+    height: 100%;
+    background: none;
+  }
+  .slider input::-moz-range-track {
+    background: none;
+  }
+  /* Ручка — графитовый шестигранник с медовой сердцевиной; в фокусе вокруг него контур. */
+  .slider input::-webkit-slider-thumb {
+    width: var(--thumb);
+    height: 100%;
+    border: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-5 -5 40 44'%3E%3Cpolygon points='15,1 29,9 29,25 15,33 1,25 1,9' fill='%2317150f'/%3E%3Cpolygon points='15,10.5 21,14 21,20 15,23.5 9,20 9,14' fill='%23f5b700'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+    cursor: grab;
+    pointer-events: auto;
+    appearance: none;
+    transition: scale var(--motion-fast) var(--ease-standard);
+  }
+  .slider input::-moz-range-thumb {
+    width: var(--thumb);
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-5 -5 40 44'%3E%3Cpolygon points='15,1 29,9 29,25 15,33 1,25 1,9' fill='%2317150f'/%3E%3Cpolygon points='15,10.5 21,14 21,20 15,23.5 9,20 9,14' fill='%23f5b700'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+    cursor: grab;
+    pointer-events: auto;
+  }
+  .slider input:focus-visible::-webkit-slider-thumb {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-5 -5 40 44'%3E%3Cpolygon points='15,-3.5 33,6.75 33,27.25 15,37.5 -3,27.25 -3,6.75' fill='none' stroke='%2317150f' stroke-width='2'/%3E%3Cpolygon points='15,1 29,9 29,25 15,33 1,25 1,9' fill='%2317150f'/%3E%3Cpolygon points='15,10.5 21,14 21,20 15,23.5 9,20 9,14' fill='%23f5b700'/%3E%3C/svg%3E");
+  }
+  .slider input:focus-visible::-moz-range-thumb {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-5 -5 40 44'%3E%3Cpolygon points='15,-3.5 33,6.75 33,27.25 15,37.5 -3,27.25 -3,6.75' fill='none' stroke='%2317150f' stroke-width='2'/%3E%3Cpolygon points='15,1 29,9 29,25 15,33 1,25 1,9' fill='%2317150f'/%3E%3Cpolygon points='15,10.5 21,14 21,20 15,23.5 9,20 9,14' fill='%23f5b700'/%3E%3C/svg%3E");
+  }
+  .slider input:active::-webkit-slider-thumb {
+    cursor: grabbing;
+    scale: 1.12;
+  }
+  .slider input:active::-moz-range-thumb {
+    cursor: grabbing;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .comb polygon,
+    .slider input::-webkit-slider-thumb {
+      transition: none;
+    }
+  }
+</style>

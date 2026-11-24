@@ -6,26 +6,47 @@ namespace bee::catalog {
 Json::Value Repository::list(const Filter& f,bool admin) const {
     // Drogon sends int parameters as 4-byte binary without a type; untyped LIMIT/OFFSET
     // would be inferred as bigint and rejected, hence the explicit integer casts.
+    // The public list also carries facets. Each one ignores its own filter (category counts
+    // ignore the chosen category, the price histogram ignores the price range), so the
+    // shopper sees what another choice would give. The histogram has 24 buckets on a
+    // logarithmic scale between the cheapest and the dearest product.
     const auto rows=db_->execSqlSync(R"SQL(
-      WITH filtered AS (
-        SELECT p.id,p.created_at,t.name,min(v.price_minor) AS price
+      WITH variants AS (
+        SELECT p.id,p.created_at,p.brand_id,t.name,v.price_minor,
+          ($4='' OR EXISTS(SELECT 1 FROM product_categories pc WHERE pc.product_id=p.id AND pc.category_id=NULLIF($4,'')::uuid)) AS in_category,
+          ($5='' OR p.brand_id=NULLIF($5,'')::uuid) AS in_brand,
+          v.price_minor BETWEEN $6::bigint AND $7::bigint AS in_price
         FROM products p JOIN product_translations t ON t.product_id=p.id AND t.locale=$1
         JOIN product_variants v ON v.product_id=p.id AND ($2::boolean OR v.active)
         WHERE ($2::boolean OR p.status='active')
           AND ($3='' OR to_tsvector('simple',t.name||' '||t.description) @@ plainto_tsquery('simple',$3) OR t.name ILIKE '%'||replace(replace(replace($3,'\','\\'),'%','\%'),'_','\_')||'%')
-          AND ($4='' OR EXISTS(SELECT 1 FROM product_categories pc WHERE pc.product_id=p.id AND pc.category_id=NULLIF($4,'')::uuid))
-          AND ($5='' OR p.brand_id=NULLIF($5,'')::uuid)
-          AND v.price_minor BETWEEN $6::bigint AND $7::bigint
-        GROUP BY p.id,t.name
+      ), filtered AS (
+        SELECT id,created_at,name,min(price_minor) AS price FROM variants
+        WHERE in_category AND in_brand AND in_price GROUP BY id,created_at,name
       ), page AS (
         SELECT * FROM filtered ORDER BY
           CASE WHEN $8='price_asc' THEN price END ASC,
           CASE WHEN $8='price_desc' THEN price END DESC,
           CASE WHEN $8='name' THEN name END ASC,
           created_at DESC,id LIMIT $9::integer OFFSET $10::integer
+      ), prices AS (
+        SELECT id,min(price_minor) AS price FROM variants WHERE in_category AND in_brand GROUP BY id
       )
-      SELECT jsonb_build_object('items',COALESCE((SELECT jsonb_agg(catalog_document(id)) FROM page),'[]'),
-        'total',(SELECT count(*) FROM filtered),'page',$11::integer,'limit',$9::integer)::text AS document
+      SELECT (jsonb_build_object('items',COALESCE((SELECT jsonb_agg(catalog_document(id)) FROM page),'[]'),
+        'total',(SELECT count(*) FROM filtered),'page',$11::integer,'limit',$9::integer)
+        || CASE WHEN $2::boolean THEN '{}'::jsonb ELSE jsonb_build_object('facets',jsonb_build_object(
+          'categories',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',category_id,'count',products) ORDER BY category_id) FROM (
+            SELECT pc.category_id,count(DISTINCT v.id) AS products FROM variants v
+            JOIN product_categories pc ON pc.product_id=v.id WHERE v.in_brand AND v.in_price GROUP BY pc.category_id) counted),'[]'),
+          'brands',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',brand_id,'count',products) ORDER BY brand_id) FROM (
+            SELECT brand_id,count(DISTINCT id) AS products FROM variants
+            WHERE brand_id IS NOT NULL AND in_category AND in_price GROUP BY brand_id) counted),'[]'),
+          'price',(SELECT jsonb_build_object('min',low,'max',high,'histogram',(
+            SELECT jsonb_agg(COALESCE(counted.products,0) ORDER BY bucket) FROM generate_series(1,24) bucket
+            LEFT JOIN (SELECT width_bucket(ln(greatest(price,1)::float8),ln(greatest(low,1)::float8),ln(greatest(high,1)::float8)+1e-9,24) AS slot,count(*) AS products
+              FROM prices GROUP BY 1) counted ON counted.slot=bucket))
+            FROM (SELECT min(price) AS low,max(price) AS high FROM prices) bounds WHERE high IS NOT NULL)
+        )) END)::text AS document
     )SQL", f.locale,admin,f.query,f.category,f.brand,f.minPrice,f.maxPrice,f.sort,f.limit,(f.page-1)*f.limit,f.page);
     return decode(rows[0]["document"].as<std::string>());
 }

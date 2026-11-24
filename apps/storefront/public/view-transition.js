@@ -14,8 +14,27 @@
       );
     }
   }
-  window.addEventListener('pagereveal', name);
-  document.addEventListener('DOMContentLoaded', name);
+  // Панель фильтров прокручивается сама; после выбора она открывается там же, где
+  // была, а не сверху. Позицию запомнил скрипт страницы каталога.
+  function filters() {
+    try {
+      var top = sessionStorage.getItem('bee:filters-scroll');
+      var panel = document.querySelector('form[data-filters]');
+      if (top === null || !panel) return;
+      sessionStorage.removeItem('bee:filters-scroll');
+      panel.scrollTop = Number(top);
+    } catch (error) {
+      // Без sessionStorage панель открывается сверху.
+    }
+  }
+  window.addEventListener('pagereveal', function () {
+    name();
+    filters();
+  });
+  document.addEventListener('DOMContentLoaded', function () {
+    name();
+    filters();
+  });
   try {
     var raw = sessionStorage.getItem('bee:transition');
     if (!raw) return;

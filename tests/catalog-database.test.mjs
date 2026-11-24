@@ -121,6 +121,25 @@ test('actual repository query searches, filters, sorts and paginates public reco
     JSON.parse((await query("%' OR 1=1 --")).rows[0].document).total,
     0,
   );
+  // Фасеты: каждый не учитывает собственный фильтр.
+  const all = JSON.parse((await query('')).rows[0].document).facets;
+  assert.deepEqual(all.categories, [{ id: category, count: 1 }]);
+  assert.deepEqual(all.brands, []);
+  assert.equal(all.price.min, 125050);
+  assert.equal(all.price.max, 125050);
+  assert.equal(all.price.histogram.length, 24);
+  assert.equal(all.price.histogram[0], 1);
+  assert.equal(
+    all.price.histogram.reduce((sum, count) => sum + count, 0),
+    1,
+  );
+  const dearer = JSON.parse(
+    (await query('', '', 125051)).rows[0].document,
+  ).facets;
+  assert.deepEqual(dearer.categories, []);
+  assert.equal(dearer.price.min, 125050);
+  const none = JSON.parse((await query('нет-такого')).rows[0].document).facets;
+  assert.equal(none.price, null);
   const metadata = JSON.parse(
     (await db.query(sql[1], ['ro'])).rows[0].document,
   );
@@ -205,8 +224,9 @@ test('archived products disappear from the public query but remain in admin', as
     0,
   );
   parameters[1] = true;
-  assert.equal(
-    JSON.parse((await db.query(sql[0], parameters)).rows[0].document).total,
-    1,
+  const admin = JSON.parse(
+    (await db.query(sql[0], parameters)).rows[0].document,
   );
+  assert.equal(admin.total, 1);
+  assert.equal(admin.facets, undefined);
 });
