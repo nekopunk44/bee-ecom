@@ -78,7 +78,7 @@ const refined =
     <div class="heading">
       <div>
         <p class="eyebrow rise">{t.catalog}</p>
-        <h1 class="display rise" style="--delay: 80ms">
+        <h1 class="display rise" data-step="1">
           {t.title}
         </h1>
       </div>
@@ -176,7 +176,7 @@ const refined =
         ) : (
           <>
             {data?.items.length ? (
-              <div class="products">
+              <div class="products" data-catalog-results>
                 {data.items.map((product) => (
                   <ProductCard product={product} locale={locale} reveal />
                 ))}

@@ -267,3 +267,25 @@ test('an empty search shows living honeycomb instead of a bare message', async (
   expect(box?.height ?? 0).toBeGreaterThan(100);
   await context.close();
 });
+
+test('the catalog opens with a honeycomb cell from the point of the click', async ({
+  browser,
+}) => {
+  const { context, page } = await open(browser);
+  await page.goto(home);
+  const button = page.getByRole('link', { name: 'Открыть каталог' });
+  await button.click();
+  await expect(page).toHaveURL(/\/ru\/catalog\/$/);
+  const root = page.locator('html');
+  await expect(root).toHaveAttribute('data-transition', 'catalog');
+  const origin = await root.evaluate((html) =>
+    html.style.getPropertyValue('--vt-x'),
+  );
+  expect(origin).toMatch(/^\d+$/);
+  // Внутри каталога (поиск, фильтры) обычный переход, без соты.
+  await page.getByLabel('Поиск', { exact: true }).fill('улей');
+  await page.getByLabel('Поиск', { exact: true }).press('Enter');
+  await expect(page).toHaveURL(/q=/);
+  await expect(root).not.toHaveAttribute('data-transition', 'catalog');
+  await context.close();
+});
