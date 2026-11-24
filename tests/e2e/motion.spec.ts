@@ -82,7 +82,7 @@ test('reduced motion keeps the still hero picture instead of the 3D story', asyn
   const { context, page } = await open(browser, { reducedMotion: 'reduce' });
   await page.goto(home);
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    'Хорошая пасека',
+    'Пасека начинается',
   );
   await page.waitForTimeout(1000);
   await expect(page.locator('[data-story]')).not.toHaveClass(/story--live/);
@@ -232,17 +232,19 @@ test('catalog cards tilt toward the pointer unless motion is reduced', async ({
     await page.goto(`${storefront}/ru/catalog/`);
     const picture = page.locator('[data-tilt]').first();
     await picture.scrollIntoViewIfNeeded();
-    await page.waitForLoadState('networkidle');
     const box = await picture.boundingBox();
     if (!box) throw new Error('product card is not visible');
-    await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.2);
-    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.15);
-    const tilt = () =>
-      picture.evaluate((el) =>
+    // Скрипт наклона может загрузиться позже первого движения: каждая попытка двигает курсор.
+    const tilt = async () => {
+      await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.2);
+      await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.15);
+      return picture.evaluate((el) =>
         (el as HTMLElement).style.getPropertyValue('--tilt-y'),
       );
+    };
     if (reducedMotion === 'reduce') {
-      await page.waitForTimeout(300);
+      await tilt();
+      await page.waitForTimeout(500);
       expect(await tilt()).toBe('');
     } else {
       await expect.poll(tilt).toMatch(/^\d/);
