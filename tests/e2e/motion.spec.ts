@@ -235,9 +235,10 @@ test('catalog cards tilt toward the pointer unless motion is reduced', async ({
     const box = await picture.boundingBox();
     if (!box) throw new Error('product card is not visible');
     // Скрипт наклона может загрузиться позже первого движения: каждая попытка двигает курсор.
+    // Правый верхний угол занимает сердечко избранного, поэтому курсор чуть ниже.
     const tilt = async () => {
-      await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.2);
-      await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.15);
+      await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.6);
+      await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.55);
       return picture.evaluate((el) =>
         (el as HTMLElement).style.getPropertyValue('--tilt-y'),
       );
