@@ -1,5 +1,6 @@
 #include "Media.hpp"
 #include "platform/Errors.hpp"
+#include "platform/Logging.hpp"
 #include <curl/curl.h>
 #include <regex>
 
@@ -46,7 +47,18 @@ std::string S3Storage::request(const std::string& key,const std::string* data) c
     const auto code=curl_easy_perform(handle.get()); long status=0;
     curl_easy_getinfo(handle.get(),CURLINFO_RESPONSE_CODE,&status);
     if(status==404) throw Error(404,"NOT_FOUND","Image not found");
-    if(code!=CURLE_OK || status<200 || status>=300) throw Error(503,"STORAGE_UNAVAILABLE","Media storage is unavailable");
+    if(code!=CURLE_OK || status<200 || status>=300) {
+        // The client only sees 503, so the reason goes to the log: HTTP status, curl error
+        // and the S3 error code (e.g. InvalidAccessKeyId), never keys or credentials.
+        Json::Value fields;
+        fields["method"]=data?"PUT":"GET";
+        fields["status"]=static_cast<Json::Int64>(status);
+        fields["curl"]=curl_easy_strerror(code);
+        std::smatch match;
+        if(std::regex_search(result,match,std::regex("<Code>([A-Za-z]{1,64})</Code>"))) fields["code"]=match[1].str();
+        bee::log("bee-api","error","storage_failed",fields);
+        throw Error(503,"STORAGE_UNAVAILABLE","Media storage is unavailable");
+    }
     return result;
 }
 void S3Storage::put(const std::string& key,const std::string& data) const { request(key,&data); }
