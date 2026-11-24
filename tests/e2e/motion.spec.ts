@@ -146,6 +146,10 @@ test('the home page tells the hive story in 3D while scrolling', async ({
       parts.first().evaluate((part) => Number(getComputedStyle(part).opacity)),
     )
     .toBeGreaterThan(0.9);
+  // Рядом с разобранным ульем три системы ульев, каждая ведёт в каталог.
+  const systems = page.locator('.system');
+  await expect(systems).toHaveCount(3);
+  await expect(systems.first()).toHaveAttribute('href', /catalog\/\?q=/);
   // В конце истории поиск по-прежнему работает поверх сот.
   await page.getByLabel('Что ищете').scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: 'Найти' })).toBeVisible();
