@@ -196,7 +196,7 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
       center: new Vector3(0, 5, 0),
       dir: new Vector3(0.18, 0.29, 1).normalize(),
       dist: wide ? 32 : 54,
-      anchor: wide ? [0.22, 0] : [-0.24, 0.42],
+      anchor: wide ? [0.25, 0] : [-0.24, 0.42],
     },
     {
       center: finalFrame,

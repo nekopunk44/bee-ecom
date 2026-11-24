@@ -173,18 +173,39 @@ const catalog = `/${locale}/catalog/`;
           </svg>
         </div>
       </div>
-      {[t.systems, t.frames].map((chapter) => (
+      {([t.systems, t.frames] as const).map((chapter) => (
         <div class="story-step chapter">
           <div class="container chapter-inner">
             <p class="label">{chapter.label}</p>
             <h2 class="display">{chapter.title}</h2>
             <p class="chapter-text">{chapter.text}</p>
-            <a
-              class="chapter-link"
-              href={`${catalog}?q=${encodeURIComponent(chapter.query)}`}
-            >
-              {chapter.link}
-            </a>
+            {'list' in chapter ? (
+              <ul class="systems">
+                {chapter.list.map((system) => (
+                  <li data-reveal>
+                    <a
+                      class:list={['system', { model: system.model }]}
+                      href={`${catalog}?q=${encodeURIComponent(system.query)}`}
+                    >
+                      <span class="system-name">{system.name}</span>
+                      {system.lines.map((line) => (
+                        <span class="system-line">{line}</span>
+                      ))}
+                      {system.model && (
+                        <span class="system-tag">{chapter.model}</span>
+                      )}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <a
+                class="chapter-link"
+                href={`${catalog}?q=${encodeURIComponent(chapter.query)}`}
+              >
+                {chapter.link}
+              </a>
+            )}
             {chapter === t.frames && fresh.length > 0 && (
               <section class="fresh" aria-labelledby="fresh-heading">
                 <div class="fresh-head">
@@ -316,6 +337,58 @@ const catalog = `/${locale}/catalog/`;
     align-items: center;
     min-height: 2.75rem;
     color: var(--color-honey);
+    font-weight: 700;
+  }
+  /* Системы ульев в главе о совместимости: та, что показана на модели, отмечена. */
+  .systems {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+    gap: var(--space-sm);
+    width: min(100%, 38rem);
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .system {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 0.3rem;
+    height: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--color-night-line);
+    border-radius: var(--radius-md);
+    background: rgb(42 39 32 / 0.88);
+    color: var(--color-night-text);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition:
+      transform var(--motion-normal) var(--ease-out),
+      border-color var(--motion-normal) var(--ease-out);
+  }
+  .system:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-honey);
+  }
+  .system.model {
+    border-color: var(--color-honey);
+  }
+  .system-name {
+    margin-bottom: 0.2rem;
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .system-tag {
+    justify-self: start;
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-honey);
+    color: var(--color-ink);
+    font-size: 0.75rem;
     font-weight: 700;
   }
   .fresh {

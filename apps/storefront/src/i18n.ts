@@ -31,6 +31,27 @@ export const messages = {
       text: 'Дадан, Рута, Лежак: ищите детали по системе улья и размеру рамки, например «435×300».',
       link: 'Детали для Дадана',
       query: 'Дадан',
+      model: 'На модели',
+      list: [
+        {
+          name: 'Дадан',
+          query: 'Дадан',
+          lines: ['Корпус 435×300', 'Магазин 435×145'],
+          model: true,
+        },
+        {
+          name: 'Рута',
+          query: 'Рута',
+          lines: ['Корпус 435×230', 'Магазин 435×145'],
+          model: false,
+        },
+        {
+          name: 'Лежак',
+          query: 'Лежак',
+          lines: ['20–24 рамки 435×300', 'Без магазинов'],
+          model: false,
+        },
+      ],
     },
     frames: {
       label: 'Рамки и вощина',
@@ -93,6 +114,27 @@ export const messages = {
       text: 'Dadant, Langstroth, stup orizontal: caută piesele după tipul stupului și dimensiunea ramei, de exemplu „435×300”.',
       link: 'Piese pentru Dadant',
       query: 'Dadant',
+      model: 'Pe model',
+      list: [
+        {
+          name: 'Dadant',
+          query: 'Dadant',
+          lines: ['Corp 435×300', 'Magazin 435×145'],
+          model: true,
+        },
+        {
+          name: 'Langstroth',
+          query: 'Langstroth',
+          lines: ['Corp 435×230', 'Magazin 435×145'],
+          model: false,
+        },
+        {
+          name: 'Stup orizontal',
+          query: 'Stup orizontal',
+          lines: ['20–24 rame 435×300', 'Fără magazine'],
+          model: false,
+        },
+      ],
     },
     frames: {
       label: 'Rame și faguri artificiali',
