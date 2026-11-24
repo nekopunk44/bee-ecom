@@ -145,6 +145,9 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
           type="checkbox"
           checked={refined}
         />
+        {params.get('q') && (
+          <input type="hidden" name="q" value={params.get('q') ?? ''} />
+        )}
         <div class="filters-head">
           <p class="filters-title">
             {t.filters}
@@ -162,35 +165,9 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
           )}
         </div>
         <div class="filters-top">
-          <label class="search-field">
-            <span class="visually-hidden">{t.search}</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <circle
-                cx="11"
-                cy="11"
-                r="6.5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.25"
-              ></circle>
-              <path
-                d="M16 16l4.5 4.5"
-                stroke="currentColor"
-                stroke-width="2.25"
-                stroke-linecap="round"
-              ></path>
-            </svg>
-            <input
-              name="q"
-              type="search"
-              value={params.get('q') ?? ''}
-              maxlength="200"
-              placeholder={t.query}
-            />
-          </label>
-          <label for="filters-open" class="filters-toggle" title={t.filters}>
+          <label for="filters-open" class="filters-toggle">
             <FilterIcon name="sliders" />
-            <span class="visually-hidden">{t.filters}</span>
+            <span>{t.filters}</span>
             {chips.length > 0 && <b>{chips.length}</b>}
           </label>
         </div>
@@ -216,12 +193,7 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
                       <CategoryIcon slug={c.slug} />
                     </span>
                     <span class="name">{c.name}</span>
-                    <span class="tail">
-                      {count !== undefined && (
-                        <span class="count">{count}</span>
-                      )}
-                      <FilterIcon name="clear" />
-                    </span>
+                    <FilterIcon name="clear" />
                   </label>
                 );
               })}
@@ -262,12 +234,7 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
                       />
                       <span class="cell mark" aria-hidden="true" />
                       <span class="name">{b.name}</span>
-                      <span class="tail">
-                        {count !== undefined && (
-                          <span class="count">{count}</span>
-                        )}
-                        <FilterIcon name="clear" />
-                      </span>
+                      <FilterIcon name="clear" />
                     </label>
                   );
                 })}
@@ -612,54 +579,16 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     display: flex;
     gap: var(--space-sm);
   }
-  /* Поиск — графитовая капсула с медовой лупой и кареткой. */
-  .search-field {
-    position: relative;
-    display: block;
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-  }
-  .search-field svg {
-    position: absolute;
-    top: 50%;
-    left: 1.1rem;
-    translate: 0 -50%;
-    color: var(--color-honey);
-    pointer-events: none;
-  }
-  .search-field input {
-    width: 100%;
-    min-height: 3.25rem;
-    padding: 0 1.1rem 0 3rem;
-    border: 0;
-    border-radius: var(--radius-pill);
-    background: var(--color-ink);
-    color: #ffffff;
-    caret-color: var(--color-honey);
-    appearance: none;
-  }
-  .search-field input::placeholder {
-    color: var(--color-night-muted);
-    opacity: 1;
-  }
-  .search-field input::-webkit-search-cancel-button {
-    appearance: none;
-  }
-  .search-field input:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-honey);
-  }
-  /* На телефоне фильтры открывает кнопка-значок: ползунки на ней разъезжаются. */
+  /* На телефоне фильтры открывает строка со значком: ползунки на нём разъезжаются. */
   .filters-toggle {
-    display: inline-flex;
-    flex: none;
+    display: flex;
+    flex: 1;
     align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    min-width: 3.25rem;
+    gap: var(--space-sm);
+    min-height: 3rem;
     margin: 0;
-    padding-inline: 0.9rem;
+    padding-inline: 1rem;
+    font-weight: 700;
     border-radius: var(--radius-pill);
     background: var(--color-paper);
     color: var(--color-ink);
@@ -784,57 +713,27 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     outline: 3px solid var(--color-focus);
     outline-offset: 2px;
   }
-  /* Справа число товаров. У выбранной строки на его место встаёт крестик: второе
-     нажатие снимает выбор. С мышью крестик появляется при наведении. */
-  .tail {
-    display: grid;
-    place-items: center;
-    min-width: 1.25rem;
-  }
-  .tail > :global(*) {
-    grid-area: 1 / 1;
-    transition:
-      opacity var(--motion-normal) var(--ease-standard),
-      rotate var(--motion-normal) var(--ease-standard),
-      scale var(--motion-normal) var(--ease-standard);
-  }
-  .count {
-    color: var(--color-muted);
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-  }
-  .tail :global(.icon-clear) {
+  /* У выбранной строки справа крестик: второе нажатие снимает выбор. */
+  .option :global(.icon-clear) {
+    flex: none;
     width: 1rem;
     height: 1rem;
     color: var(--color-honey);
     opacity: 0;
     rotate: -90deg;
     scale: 0.5;
+    transition:
+      opacity var(--motion-normal) var(--ease-standard),
+      rotate var(--motion-normal) var(--ease-standard),
+      scale var(--motion-normal) var(--ease-standard);
   }
-  .option:has(input:checked) .count {
-    color: var(--color-honey);
+  .option:has(input:checked) :global(.icon-clear) {
+    opacity: 1;
+    rotate: 0deg;
+    scale: 1;
   }
-  @media (hover: none) {
-    .option:has(input:checked) .count {
-      opacity: 0;
-      scale: 0.5;
-    }
-    .option:has(input:checked) .tail :global(.icon-clear) {
-      opacity: 1;
-      rotate: 0deg;
-      scale: 1;
-    }
-  }
-  @media (hover: hover) {
-    .option:has(input:checked):hover .count {
-      opacity: 0;
-      scale: 0.5;
-    }
-    .option:has(input:checked):hover .tail :global(.icon-clear) {
-      opacity: 1;
-      rotate: 0deg;
-      scale: 1;
-    }
+  .option:has(input:checked):hover :global(.icon-clear) {
+    rotate: 90deg;
   }
   /* Ячейка: шестигранник со сменным уровнем мёда. Иконка категории рисует контур и
      рисунок поверх, заливку даёт ячейка. */
@@ -927,7 +826,7 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
   @media (prefers-reduced-motion: reduce) {
     .cell,
     .cell::before,
-    .tail > :global(*),
+    .option :global(.icon-clear),
     .filters-panel,
     .filters-toggle :global(.knob),
     .reset :global(.icon) {
@@ -1089,7 +988,7 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     .filters-head {
       display: flex;
     }
-    .filters-toggle {
+    .filters-top {
       display: none;
     }
     .filters-panel,

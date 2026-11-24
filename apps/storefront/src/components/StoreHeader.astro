@@ -1,17 +1,18 @@
 ---
 import type { Locale } from '../i18n';
-import { catalogText } from '../lib/catalog';
 import HexMark from './HexMark.astro';
 interface Props {
   locale: Locale;
+  /** night — графитовая шапка над тёмным первым экраном главной, paper — светлая над
+   * светлыми страницами, чтобы между шапкой и страницей не было резкой границы. */
+  tone?: 'night' | 'paper';
 }
-const { locale } = Astro.props;
+const { locale, tone = 'paper' } = Astro.props;
 const suffix = Astro.url.pathname.replace(/^\/(ru|ro)/, '');
 const query = Astro.url.searchParams.get('q') ?? '';
 const text = {
   ru: {
     skip: 'Перейти к содержимому',
-    nav: 'Навигация',
     search: 'Поиск по каталогу',
     account: 'Аккаунт',
     cart: 'Корзина',
@@ -19,7 +20,6 @@ const text = {
   },
   ro: {
     skip: 'Salt la conținut',
-    nav: 'Navigare',
     search: 'Căutare în catalog',
     account: 'Cont',
     cart: 'Coș',
@@ -31,15 +31,12 @@ const text = {
 <a class="skip-link" href="#main">
   {text.skip}
 </a>
-<header>
+<header data-tone={tone}>
   <div class="container bar">
     <a class="brand" href={`/${locale}/`}>
       <HexMark size={30} />
       <span>bee</span>
     </a>
-    <nav class="sections" aria-label={text.nav}>
-      <a href={`/${locale}/catalog/`}>{catalogText[locale].catalog}</a>
-    </nav>
     <form
       class="search"
       role="search"
@@ -86,6 +83,7 @@ const text = {
         </svg>
       </a>
       <a class="cart" href={`/${locale}/cart/`} data-cart-link>
+        <span class="drop" aria-hidden="true"></span>
         <svg
           width="20"
           height="20"
@@ -122,12 +120,23 @@ const text = {
 </header>
 
 <style>
+  /* Шапка в цвет страницы: светлая над светлыми страницами, графитовая над тёмным
+     первым экраном главной. Цвета внутри берутся из переменных ниже. */
   header {
-    background: var(--color-night);
-    color: #ffffff;
-    --color-focus: var(--color-honey);
+    --header-text: var(--color-ink);
+    --header-muted: var(--color-muted);
+    --header-raised: var(--color-sand);
+    background: var(--color-paper);
+    color: var(--header-text);
     /* При переходе между страницами шапка стоит на месте, меняется только содержимое. */
     view-transition-name: site-header;
+  }
+  header[data-tone='night'] {
+    --header-text: #ffffff;
+    --header-muted: var(--color-night-muted);
+    --header-raised: var(--color-night-raised);
+    --color-focus: var(--color-honey);
+    background: var(--color-night);
   }
   /* Сота в логотипе поворачивается на грань — соты симметричны, поэтому это игра, а не смена знака. */
   .brand :global(svg) {
@@ -154,18 +163,6 @@ const text = {
     line-height: 1;
     text-decoration: none;
   }
-  .sections {
-    display: flex;
-    gap: var(--space-md);
-    font-weight: 600;
-  }
-  .sections a {
-    padding-block: var(--space-xs);
-    text-decoration: none;
-  }
-  .sections a:hover {
-    color: var(--color-honey);
-  }
   .search {
     flex: 1 1 16rem;
     display: flex;
@@ -174,11 +171,11 @@ const text = {
     min-height: 3rem;
     padding-inline: 1rem;
     border-radius: var(--radius-pill);
-    background: var(--color-night-raised);
-    color: var(--color-night-muted);
+    background: var(--header-raised);
+    color: var(--header-muted);
   }
   .search:focus-within {
-    outline: 3px solid var(--color-honey);
+    outline: 3px solid var(--color-focus);
     outline-offset: 2px;
   }
   .search input {
@@ -187,11 +184,11 @@ const text = {
     border: 0;
     border-radius: 0;
     background: transparent;
-    color: #ffffff;
+    color: var(--header-text);
     outline: none;
   }
   .search input::placeholder {
-    color: var(--color-night-muted);
+    color: var(--header-muted);
   }
   .actions {
     display: flex;
@@ -207,9 +204,10 @@ const text = {
     border-radius: var(--radius-pill);
   }
   .icon:hover {
-    background: var(--color-night-raised);
+    background: var(--header-raised);
   }
   .cart {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -220,6 +218,70 @@ const text = {
     color: var(--color-ink);
     font-weight: 700;
     text-decoration: none;
+    transition: background var(--motion-fast) var(--ease-standard);
+  }
+  .cart:hover {
+    background: #e6ab00;
+  }
+  /* При наведении в тележку падает графитовая ячейка, тележка её ловит и качается. */
+  .drop {
+    position: absolute;
+    top: 0.2rem;
+    left: calc(1.1rem + 10px);
+    width: 0.45rem;
+    height: 0.52rem;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background: var(--color-ink);
+    opacity: 0;
+    translate: -50% 0;
+    pointer-events: none;
+  }
+  .cart svg {
+    transform-origin: 40% 90%;
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .cart:hover .drop {
+      animation: cell-drop 760ms var(--ease-standard) both;
+    }
+    .cart:hover svg {
+      animation: cart-catch 760ms var(--ease-standard) both;
+    }
+  }
+  @keyframes cell-drop {
+    0% {
+      opacity: 0;
+      translate: -50% -0.4rem;
+    }
+    20% {
+      opacity: 1;
+    }
+    55% {
+      opacity: 1;
+      translate: -50% 0.7rem;
+    }
+    62%,
+    100% {
+      opacity: 0;
+      translate: -50% 0.7rem;
+    }
+  }
+  @keyframes cart-catch {
+    0%,
+    52% {
+      rotate: 0deg;
+      translate: 0 0;
+    }
+    64% {
+      rotate: -10deg;
+      translate: 0 2px;
+    }
+    80% {
+      rotate: 5deg;
+      translate: 0 0;
+    }
+    100% {
+      rotate: 0deg;
+    }
   }
   .languages {
     display: flex;
@@ -228,33 +290,30 @@ const text = {
   }
   .languages a {
     padding: 0.5rem 0.45rem;
-    color: var(--color-night-muted);
+    color: var(--header-muted);
     text-decoration: none;
   }
   .languages a:hover {
-    color: #ffffff;
+    color: var(--header-text);
   }
   .languages a[aria-current] {
-    color: #ffffff;
+    color: var(--header-text);
     text-decoration: underline;
     text-decoration-color: var(--color-honey);
     text-decoration-thickness: 2px;
   }
-  /* На телефоне: логотип и кнопки в первой строке, каталог и поиск во второй. */
+  /* На телефоне: логотип и кнопки в первой строке, поиск во второй. */
   @media (max-width: 47.99rem) {
     .bar {
       display: grid;
       grid-template-columns: auto 1fr auto;
       grid-template-areas:
         'brand . actions'
-        'sections search search';
+        'search search search';
       gap: var(--space-sm);
     }
     .brand {
       grid-area: brand;
-    }
-    .sections {
-      grid-area: sections;
     }
     .search {
       grid-area: search;
@@ -268,6 +327,9 @@ const text = {
       width: 2.75rem;
       padding: 0;
       justify-content: center;
+    }
+    .drop {
+      left: 50%;
     }
     .cart-label {
       position: absolute;
