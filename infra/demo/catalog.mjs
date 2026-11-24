@@ -39,6 +39,14 @@ export const categories = [
   },
 ];
 
+// Brands are invented as well: workshops a Moldovan beekeeping shop could sell.
+export const brands = [
+  { slug: 'apilemn', name: 'ApiLemn' },
+  { slug: 'inox-prisaca', name: 'Inox Prisaca' },
+  { slug: 'albina-pro', name: 'Albina Pro' },
+  { slug: 'nectar-plus', name: 'Nectar Plus' },
+];
+
 export const warehouses = [
   { code: 'chisinau', name: 'Кишинёв, основной склад' },
   { code: 'balti', name: 'Бельцы, пункт выдачи' },
@@ -55,6 +63,7 @@ const text = (name, description) => ({
 export const products = [
   {
     slug: 'uley-dadan-12-ramok',
+    brand: 'apilemn',
     category: 'ulei',
     ru: text(
       'Улей Дадан на 12 рамок',
@@ -81,6 +90,7 @@ export const products = [
   },
   {
     slug: 'korpus-ruta',
+    brand: 'apilemn',
     category: 'ulei',
     ru: text(
       'Корпус улья Рута',
@@ -101,6 +111,7 @@ export const products = [
   },
   {
     slug: 'uley-lezhak-20-ramok',
+    brand: 'apilemn',
     category: 'ulei',
     ru: text(
       'Улей-лежак на 20 рамок',
@@ -121,6 +132,7 @@ export const products = [
   },
   {
     slug: 'ramka-dadan-435x300',
+    brand: 'apilemn',
     category: 'rame-vosk',
     ru: text(
       'Рамка Дадан 435×300, 10 штук',
@@ -141,6 +153,7 @@ export const products = [
   },
   {
     slug: 'voshchina-1-kg',
+    brand: 'nectar-plus',
     category: 'rame-vosk',
     ru: text(
       'Вощина, 1 кг',
@@ -167,6 +180,7 @@ export const products = [
   },
   {
     slug: 'medogonka-4-ramki',
+    brand: 'inox-prisaca',
     category: 'medogonki',
     ru: text(
       'Медогонка на 4 рамки, нержавеющая сталь',
@@ -193,6 +207,7 @@ export const products = [
   },
   {
     slug: 'otstoynik-dlya-myoda-50-l',
+    brand: 'inox-prisaca',
     category: 'medogonki',
     ru: text(
       'Отстойник для мёда, 50 л',
@@ -213,6 +228,7 @@ export const products = [
   },
   {
     slug: 'dymar-nerzhaveyushchiy',
+    brand: 'inox-prisaca',
     category: 'dymari-instrumenty',
     ru: text(
       'Дымарь из нержавеющей стали',
@@ -239,6 +255,7 @@ export const products = [
   },
   {
     slug: 'stameska-pchelovoda',
+    brand: 'inox-prisaca',
     category: 'dymari-instrumenty',
     ru: text(
       'Стамеска пчеловода',
@@ -259,6 +276,7 @@ export const products = [
   },
   {
     slug: 'nozh-dlya-raspechatyvaniya-elektricheskiy',
+    brand: 'inox-prisaca',
     category: 'dymari-instrumenty',
     ru: text(
       'Электронож для распечатывания сот',
@@ -279,6 +297,7 @@ export const products = [
   },
   {
     slug: 'kurtka-pchelovoda-s-setkoy',
+    brand: 'albina-pro',
     category: 'odezhda-setki',
     ru: text(
       'Куртка пчеловода с лицевой сеткой',
@@ -311,6 +330,7 @@ export const products = [
   },
   {
     slug: 'perchatki-pchelovoda-kozhanye',
+    brand: 'albina-pro',
     category: 'odezhda-setki',
     ru: text(
       'Перчатки пчеловода, кожаные',
@@ -337,6 +357,7 @@ export const products = [
   },
   {
     slug: 'kormushka-potolochnaya-2-l',
+    brand: 'nectar-plus',
     category: 'uhod-podkormka',
     ru: text(
       'Потолочная кормушка, 2 л',
@@ -357,6 +378,7 @@ export const products = [
   },
   {
     slug: 'kandi-dlya-podkormki-1-kg',
+    brand: 'nectar-plus',
     category: 'uhod-podkormka',
     ru: text(
       'Канди для подкормки, 1 кг',
@@ -372,6 +394,180 @@ export const products = [
         name: '1 кг',
         priceMinor: 6500,
         stock: { chisinau: 60, balti: 20 },
+      },
+    ],
+  },
+  {
+    slug: 'ramka-ruta-435x230',
+    brand: 'apilemn',
+    category: 'rame-vosk',
+    ru: text(
+      'Рамка Рута 435×230',
+      'Собранная рамка из сосны для корпусов Рута, с отверстиями под проволоку.',
+    ),
+    ro: text(
+      'Ramă Langstroth 435×230',
+      'Ramă asamblată din pin pentru corpuri Langstroth, cu găuri pentru sârmă.',
+    ),
+    variants: [
+      {
+        sku: 'FRAME-RUTA-230',
+        name: '1 шт.',
+        priceMinor: 2100,
+        stock: { chisinau: 300, balti: 80 },
+      },
+      {
+        sku: 'FRAME-RUTA-230-10',
+        name: '10 шт.',
+        priceMinor: 19500,
+        stock: { chisinau: 40 },
+      },
+    ],
+  },
+  {
+    slug: 'ramka-magazinnaya-435x145',
+    brand: 'apilemn',
+    category: 'rame-vosk',
+    ru: text(
+      'Магазинная рамка 435×145',
+      'Полурамка для магазинов Дадан и Рута, сосна, отверстия под проволоку.',
+    ),
+    ro: text(
+      'Ramă de magazin 435×145',
+      'Semiramă pentru magazinele Dadant și Langstroth, pin, găuri pentru sârmă.',
+    ),
+    variants: [
+      {
+        sku: 'FRAME-SUP-145',
+        name: '1 шт.',
+        priceMinor: 1700,
+        stock: { chisinau: 400, balti: 120 },
+      },
+    ],
+  },
+  {
+    slug: 'magazin-dadan-12-ramok',
+    brand: 'apilemn',
+    category: 'ulei',
+    ru: text(
+      'Магазин Дадан на 12 рамок',
+      'Надставка под рамки 435×145 из липы толщиной 35 мм, с ручками по бокам.',
+    ),
+    ro: text(
+      'Magazin Dadant pentru 12 rame',
+      'Înălțător pentru rame 435×145 din tei de 35 mm, cu mânere laterale.',
+    ),
+    variants: [
+      {
+        sku: 'SUPER-DAD12',
+        name: 'Без окраски',
+        priceMinor: 64000,
+        stock: { chisinau: 12, balti: 4 },
+      },
+    ],
+  },
+  {
+    slug: 'medogonka-2-ramki-ruchnaya',
+    brand: 'inox-prisaca',
+    category: 'medogonki',
+    ru: text(
+      'Медогонка на 2 рамки, ручная',
+      'Хордиальная медогонка из нержавеющей стали для небольшой пасеки.',
+    ),
+    ro: text(
+      'Extractor pentru 2 rame, manual',
+      'Extractor tangențial din inox pentru o stupină mică.',
+    ),
+    variants: [
+      {
+        sku: 'EXTR-2-MAN',
+        name: 'Ручная',
+        priceMinor: 279000,
+        stock: { chisinau: 3 },
+      },
+    ],
+  },
+  {
+    slug: 'setka-pchelovoda',
+    brand: 'albina-pro',
+    category: 'odezhda-setki',
+    ru: text(
+      'Сетка пчеловода',
+      'Лицевая сетка на шляпе с широкими полями и чёрной вставкой для обзора.',
+    ),
+    ro: text(
+      'Mască de apicultor',
+      'Mască pe pălărie cu boruri largi și inserție neagră pentru vizibilitate.',
+    ),
+    variants: [
+      {
+        sku: 'VEIL-HAT',
+        name: 'Универсальная',
+        priceMinor: 15500,
+        stock: { chisinau: 50, balti: 15 },
+      },
+    ],
+  },
+  {
+    slug: 'dymar-malyy',
+    brand: 'inox-prisaca',
+    category: 'dymari-instrumenty',
+    ru: text(
+      'Дымарь малый',
+      'Компактный дымарь из нержавеющей стали с защитной решёткой, корпус 80 мм.',
+    ),
+    ro: text(
+      'Afumător mic',
+      'Afumător compact din inox cu grilaj de protecție, corp de 80 mm.',
+    ),
+    variants: [
+      {
+        sku: 'SMOKER-SMALL',
+        name: '80 мм',
+        priceMinor: 24000,
+        stock: { chisinau: 20, balti: 8 },
+      },
+    ],
+  },
+  {
+    slug: 'kormushka-ramochnaya-3-l',
+    brand: 'nectar-plus',
+    category: 'uhod-podkormka',
+    ru: text(
+      'Кормушка рамочная, 3 л',
+      'Пластиковая кормушка размером с рамку Дадан, с поплавками.',
+    ),
+    ro: text(
+      'Hrănitor tip ramă, 3 l',
+      'Hrănitor din plastic de mărimea unei rame Dadant, cu flotoare.',
+    ),
+    variants: [
+      {
+        sku: 'FEEDER-FRAME-3L',
+        name: '3 л',
+        priceMinor: 16500,
+        stock: { chisinau: 70, balti: 20 },
+      },
+    ],
+  },
+  {
+    slug: 'roevnya',
+    brand: 'apilemn',
+    category: 'dymari-instrumenty',
+    ru: text(
+      'Роевня',
+      'Лёгкая роевня из фанеры с сетчатой стенкой для сбора и перевозки роя.',
+    ),
+    ro: text(
+      'Roitor',
+      'Roitor ușor din placaj cu perete din plasă pentru prinderea și transportul roiului.',
+    ),
+    variants: [
+      {
+        sku: 'SWARM-BOX',
+        name: 'Фанера',
+        priceMinor: 42000,
+        stock: { chisinau: 10 },
       },
     ],
   },
