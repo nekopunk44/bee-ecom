@@ -179,7 +179,7 @@
         <!-- Соты разлетаются из значка: маленький праздник оформленного заказа. -->
         <span class="burst" aria-hidden="true">
           {#each Array.from({ length: 8 }, (_, i) => i) as i (i)}
-            <i style={`--angle: ${i * 45}deg`}></i>
+            <i></i>
           {/each}
           <svg width="26" height="30" viewBox="0 0 30 34"
             ><polygon
@@ -388,6 +388,31 @@
     background: var(--color-honey);
     opacity: 0;
     animation: spark 900ms var(--ease-out) 220ms both;
+  }
+  /* Углы лучей в CSS: встроенный style запрещён политикой безопасности. */
+  .burst i:nth-of-type(1) {
+    --angle: 0deg;
+  }
+  .burst i:nth-of-type(2) {
+    --angle: 45deg;
+  }
+  .burst i:nth-of-type(3) {
+    --angle: 90deg;
+  }
+  .burst i:nth-of-type(4) {
+    --angle: 135deg;
+  }
+  .burst i:nth-of-type(5) {
+    --angle: 180deg;
+  }
+  .burst i:nth-of-type(6) {
+    --angle: 225deg;
+  }
+  .burst i:nth-of-type(7) {
+    --angle: 270deg;
+  }
+  .burst i:nth-of-type(8) {
+    --angle: 315deg;
   }
   @keyframes pop {
     from {

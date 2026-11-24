@@ -25,7 +25,7 @@ const several = new Set(prices).size > 1;
   <a href={`/${locale}/catalog/${product.slug}/`} aria-label={translation.name}>
     <div
       class:list={['picture', { empty: !image }]}
-      style={`view-transition-name: product-${product.slug}`}
+      data-transition-name={`product-${product.slug}`}
       data-tilt
     >
       {image ? (

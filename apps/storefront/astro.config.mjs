@@ -15,5 +15,26 @@ export default defineConfig({
   adapter: onVercel ? vercel() : node({ mode: 'standalone' }),
   integrations: [svelte()],
   build: { inlineStylesheets: 'never' },
+  // Астро сам считает хэши своих встроенных скриптов и стилей (загрузчики островков)
+  // и кладёт их в <meta> с политикой. Заголовок CSP на Vercel и в nginx их пропускает.
+  security: {
+    csp: {
+      algorithm: 'SHA-256',
+      directives: [
+        "default-src 'self'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ],
+      scriptDirective: { resources: ["'self'"] },
+      styleDirective: { resources: ["'self'"] },
+    },
+  },
+  // Мелкие файлы (шрифт, короткие скрипты) не встраиваются в страницу: CSP их бы
+  // заблокировала. Всё отдаётся отдельными файлами с этого же сайта.
+  vite: { build: { assetsInlineLimit: 0 } },
   server: { port: 4321 },
 });

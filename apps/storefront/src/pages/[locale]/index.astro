@@ -43,18 +43,18 @@ const catalog = `/${locale}/catalog/`;
         <div class="container hero-inner">
           <div class="hero-text">
             <p class="label rise">{t.label}</p>
-            <h1 id="hero-heading" class="display rise" style="--delay: 90ms">
+            <h1 id="hero-heading" class="display rise" data-step="1">
               {t.heading}
             </h1>
-            <p class="intro rise" style="--delay: 200ms">
+            <p class="intro rise" data-step="3">
               {t.intro}
             </p>
-            <div class="hero-actions rise" style="--delay: 300ms">
+            <div class="hero-actions rise" data-step="4">
               <a class="button honey" href={catalog}>
                 {t.open}
               </a>
             </div>
-            <div class="queries rise" style="--delay: 380ms">
+            <div class="queries rise" data-step="5">
               <span>{t.popular}:</span>
               <ul>
                 {t.queries.map((query) => (
@@ -69,7 +69,7 @@ const catalog = `/${locale}/catalog/`;
           </div>
           <svg
             class="art rise"
-            style="--delay: 160ms"
+            data-step="2"
             width="520"
             height="500"
             viewBox="0 0 520 500"
