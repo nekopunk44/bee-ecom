@@ -1,6 +1,7 @@
 // Fills a demo stand with the catalog from infra/demo: categories, products with
 // pictures, warehouses and stock. Safe to run again: existing categories, products
-// and warehouses are kept, and stock is only received for products created now.
+// and warehouses are kept, stock is only received for products created now, and an
+// existing product without pictures gets its category picture.
 //
 //   DEMO_ADMIN_EMAIL=... DEMO_ADMIN_PASSWORD=... npm run demo:seed
 //   (or put both into .env.local; DEMO_ADMIN_URL defaults to the Vercel admin)
@@ -128,10 +129,48 @@ async function picture(kind) {
   return pictures.get(kind);
 }
 
+// A product created while picture uploads failed gets its picture on a later run.
+async function attachPicture(id, product) {
+  const category = categories.find((item) => item.slug === product.category);
+  const media = await picture(category.image);
+  if (!media) {
+    console.log(
+      `Product ${product.slug} already exists, still without a picture`,
+    );
+    return;
+  }
+  const current = await must(`/admin/products/${id}`);
+  await must(`/admin/products/${id}`, {
+    method: 'PUT',
+    body: {
+      slug: current.slug,
+      status: current.status,
+      brandId: current.brandId,
+      categoryIds: current.categoryIds,
+      translations: current.translations,
+      variants: current.variants.map(
+        ({ id, sku, name, priceMinor, active, attributes }) => ({
+          id,
+          sku,
+          name,
+          priceMinor,
+          active,
+          attributes,
+        }),
+      ),
+      mediaIds: [...current.images.map((image) => image.id), media],
+      revision: current.revision,
+    },
+  });
+  console.log(`Product ${product.slug} got its picture`);
+}
+
 for (const product of products) {
   const existing = await api(`/products/${product.slug}?locale=ru`);
   if (existing.status === 200) {
-    console.log(`Product ${product.slug} already exists`);
+    if (existing.data.images.length === 0)
+      await attachPicture(existing.data.id, product);
+    else console.log(`Product ${product.slug} already exists`);
     continue;
   }
   const category = categories.find((item) => item.slug === product.category);
