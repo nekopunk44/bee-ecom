@@ -1,8 +1,9 @@
 // Test data only. Never imported by either production application.
 export const category = '11111111-1111-4111-8111-111111111111';
+export const brand = '44444444-4444-4444-8444-444444444444';
 export const metadata = {
   categories: [{ id: category, slug: 'hives', name: 'Ульи' }],
-  brands: [],
+  brands: [{ id: brand, slug: 'apilemn', name: 'ApiLemn' }],
   attributes: [{ code: 'frames', name: 'Количество рамок', unit: 'шт.' }],
 };
 export const product = {
@@ -38,4 +39,16 @@ export const product = {
     },
   ],
   images: [],
+};
+// Фасеты как у настоящего API: цены в банях, 24 корзины по логарифмической шкале.
+export const facets = {
+  categories: [{ id: category, count: 1 }],
+  brands: [{ id: brand, count: 1 }],
+  price: {
+    min: 1700,
+    max: 279000,
+    histogram: [
+      2, 1, 0, 1, 2, 0, 1, 1, 0, 2, 1, 0, 1, 0, 2, 1, 1, 0, 0, 1, 0, 0, 1, 1,
+    ],
+  },
 };

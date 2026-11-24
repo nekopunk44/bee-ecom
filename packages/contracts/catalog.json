@@ -236,6 +236,62 @@
         },
         "limit": {
           "type": "integer"
+        },
+        "facets": {
+          "description": "Public list only. Each facet ignores its own filter: category counts ignore the chosen category, brand counts the brand, the price summary the price range.",
+          "type": "object",
+          "required": ["categories", "brands", "price"],
+          "properties": {
+            "categories": {
+              "type": "array",
+              "items": {
+                "$ref": "#/schemas/FacetCount"
+              }
+            },
+            "brands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/schemas/FacetCount"
+              }
+            },
+            "price": {
+              "description": "Cheapest product prices in minor units; null when nothing matches. The histogram has 24 buckets on a logarithmic scale from min to max.",
+              "type": "object",
+              "nullable": true,
+              "required": ["min", "max", "histogram"],
+              "properties": {
+                "min": {
+                  "type": "integer"
+                },
+                "max": {
+                  "type": "integer"
+                },
+                "histogram": {
+                  "type": "array",
+                  "minItems": 24,
+                  "maxItems": 24,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "FacetCount": {
+      "type": "object",
+      "required": ["id", "count"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

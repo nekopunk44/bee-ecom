@@ -708,6 +708,17 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+            /** @description Public list only. Each facet ignores its own filter: category counts ignore the chosen category, brand counts the brand, the price summary the price range. */
+            facets?: {
+                categories: components["schemas"]["FacetCount"][];
+                brands: components["schemas"]["FacetCount"][];
+                /** @description Cheapest product prices in minor units; null when nothing matches. The histogram has 24 buckets on a logarithmic scale from min to max. */
+                price: {
+                    min: number;
+                    max: number;
+                    histogram: number[];
+                } | null;
+            };
         };
         Session: {
             /** Format: email */
@@ -761,6 +772,11 @@ export interface components {
             attributes: {
                 [key: string]: string;
             };
+        };
+        FacetCount: {
+            /** Format: uuid */
+            id: string;
+            count: number;
         };
         Reference: {
             /** Format: uuid */

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { metadata, product } from './catalog.mjs';
+import { facets, metadata, product } from './catalog.mjs';
 createServer((request, response) => {
   const url = new URL(request.url, 'http://127.0.0.1:4399');
   response.setHeader('Content-Type', 'application/json');
@@ -34,6 +34,7 @@ createServer((request, response) => {
         total: found ? 1 : 0,
         page: 1,
         limit: 12,
+        facets,
       }),
     );
     return;
