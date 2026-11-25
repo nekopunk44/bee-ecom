@@ -13,8 +13,6 @@ export const catalogText = {
   ru: {
     title: 'Оборудование для вашей пасеки',
     catalog: 'Каталог',
-    search: 'Поиск',
-    query: 'Название или назначение',
     category: 'Категория',
     brand: 'Бренд',
     sort: 'Сортировка',
@@ -60,8 +58,6 @@ export const catalogText = {
   ro: {
     title: 'Echipamente pentru stupina ta',
     catalog: 'Catalog',
-    search: 'Căutare',
-    query: 'Denumire sau utilizare',
     category: 'Categorie',
     brand: 'Marcă',
     sort: 'Sortare',

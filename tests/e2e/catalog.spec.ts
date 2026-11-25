@@ -23,8 +23,8 @@ test('catalog search and translated product render without JavaScript', async ({
     product.translations.ro.name,
   );
   await page.goto('http://127.0.0.1:4321/ru/catalog/');
-  await page.getByLabel('Поиск', { exact: true }).fill('нет-товара');
-  await page.getByRole('button', { name: 'Показать товары' }).click();
+  await page.getByLabel('Поиск по каталогу').fill('нет-товара');
+  await page.getByLabel('Поиск по каталогу').press('Enter');
   await expect(
     page.getByText('Товары не найдены.', { exact: false }),
   ).toBeVisible();

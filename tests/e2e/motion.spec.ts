@@ -283,8 +283,8 @@ test('the catalog opens with a honeycomb cell from the point of the click', asyn
   );
   expect(origin).toMatch(/^\d+$/);
   // Внутри каталога (поиск, фильтры) обычный переход, без соты.
-  await page.getByLabel('Поиск', { exact: true }).fill('улей');
-  await page.getByLabel('Поиск', { exact: true }).press('Enter');
+  await page.getByLabel('Поиск по каталогу').fill('улей');
+  await page.getByLabel('Поиск по каталогу').press('Enter');
   await expect(page).toHaveURL(/q=/);
   await expect(root).not.toHaveAttribute('data-transition', 'catalog');
   await context.close();
