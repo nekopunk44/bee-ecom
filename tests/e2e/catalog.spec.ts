@@ -142,12 +142,26 @@ test('catalog filters apply at once and show as removable chips', async ({
   await expect(
     chips.getByRole('link', { name: 'Убрать фильтр: Ульи' }),
   ).toBeVisible();
-  // Быстрый диапазон цены добавляется к категории.
-  await page.getByRole('link', { name: '200–1 000 L', exact: true }).click();
-  await expect(page).toHaveURL(/min=200&max=1000/);
+  // Цена: ползунок и поля связаны, кнопка заранее показывает, сколько товаров найдётся.
+  await page.route('**/api/v1/products?*', (route) =>
+    route.fulfill({ json: { items: [], total: 3, page: 1, limit: 1 } }),
+  );
+  await page.getByRole('slider', { name: 'Нижняя граница цены' }).fill('60');
+  await expect(page.getByLabel('Цена от, MDL')).toHaveValue('61');
+  const apply = page.getByRole('button', { name: 'Показать 3 товара' });
+  await expect(apply).toBeVisible();
+  await page.getByLabel('Цена до, MDL').fill('1 000');
   await expect(
-    page.getByRole('link', { name: '200–1 000 L', exact: true }),
-  ).toHaveAttribute('aria-current', 'true');
+    page.getByRole('slider', { name: 'Верхняя граница цены' }),
+  ).not.toHaveValue('240');
+  await expect(page.locator('[data-column][data-selected]')).not.toHaveCount(
+    24,
+  );
+  await apply.click();
+  await expect(page).toHaveURL(/min=61&max=1000/);
+  await expect(
+    chips.getByRole('link', { name: 'Убрать фильтр: 61–1 000 L' }),
+  ).toBeVisible();
   // Сортировка кнопками над товарами сохраняет фильтры.
   await page.getByRole('link', { name: 'Цена по возрастанию' }).click();
   await expect(page).toHaveURL(/sort=price_asc/);
@@ -155,7 +169,7 @@ test('catalog filters apply at once and show as removable chips', async ({
   // Крестик на чипе убирает только свой фильтр.
   await chips.getByRole('link', { name: 'Убрать фильтр: Ульи' }).click();
   await expect(page).not.toHaveURL(/category=/);
-  await expect(page).toHaveURL(/min=200/);
+  await expect(page).toHaveURL(/min=61/);
   await page.getByRole('link', { name: 'Сбросить всё' }).click();
   await expect(page).toHaveURL(/\/ru\/catalog\/$/);
 });
