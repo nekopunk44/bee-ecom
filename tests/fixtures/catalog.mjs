@@ -1,4 +1,12 @@
 // Test data only. Never imported by either production application.
+// Фото — цветные квадраты в data:, их пропускает CSP витрины и не нужно хранилище.
+const picture = (id, color) => ({
+  id,
+  url: `data:image/svg+xml;base64,${Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="${color}"/></svg>`,
+  ).toString('base64')}`,
+  srcSet: '',
+});
 export const category = '11111111-1111-4111-8111-111111111111';
 export const brand = '44444444-4444-4444-8444-444444444444';
 export const metadata = {
@@ -36,6 +44,40 @@ export const product = {
       currency: 'MDL',
       active: true,
       attributes: { frames: '10' },
+    },
+  ],
+  images: [
+    picture('55555555-5555-4555-8555-555555555551', '#f5b700'),
+    picture('55555555-5555-4555-8555-555555555552', '#17150f'),
+    picture('55555555-5555-4555-8555-555555555553', '#b42318'),
+  ],
+};
+// Второй товар каталога: два варианта, поэтому в карточке открывается выбор.
+export const hive = {
+  ...product,
+  id: '66666666-6666-4666-8666-666666666666',
+  slug: 'uley-lezhak',
+  translations: {
+    ru: { ...product.translations.ru, name: 'Улей-лежак на 20 рамок' },
+    ro: {
+      ...product.translations.ro,
+      name: 'Stup orizontal pentru 20 de rame',
+    },
+  },
+  variants: [
+    {
+      ...product.variants[0],
+      id: '77777777-7777-4777-8777-777777777771',
+      sku: 'LEZHAK-RAW',
+      name: 'Без окраски',
+      priceMinor: 300000,
+    },
+    {
+      ...product.variants[0],
+      id: '77777777-7777-4777-8777-777777777772',
+      sku: 'LEZHAK-PNT',
+      name: 'Окрашенный',
+      priceMinor: 320000,
     },
   ],
   images: [],

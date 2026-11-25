@@ -474,6 +474,8 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
         location.assign(location.pathname);
       }
     });
+    // Обработчики на месте: до этого выбор категории сработал бы только кнопкой.
+    form.dataset.ready = '';
   }
   // Назад из выдачи: поля снова доступны, если страница вернулась из кэша.
   window.addEventListener('pageshow', () => {

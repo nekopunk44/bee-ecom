@@ -134,7 +134,11 @@ test('read-only user sees catalog without mutation controls', async ({
 test('catalog filters apply at once and show as removable chips', async ({
   page,
 }) => {
+  // Скрипт формы мог ещё не загрузиться: тогда нажатие на категорию ничего не отправит.
+  const ready = () =>
+    expect(page.locator('form[data-filters][data-ready]')).toHaveCount(1);
   await page.goto('http://127.0.0.1:4321/ru/catalog/');
+  await ready();
   // Категория применяется сразу, без кнопки; пустые поля в адрес не попадают.
   await page.getByText('Ульи', { exact: true }).click();
   await expect(page).toHaveURL(/\/ru\/catalog\/\?category=[^&]+$/);
@@ -173,8 +177,10 @@ test('catalog filters apply at once and show as removable chips', async ({
   await page.getByRole('link', { name: 'Сбросить всё' }).click();
   await expect(page).toHaveURL(/\/ru\/catalog\/$/);
   // Повторное нажатие на выбранную категорию снимает выбор.
+  await ready();
   await page.getByText('Ульи', { exact: true }).click();
   await expect(page).toHaveURL(/category=/);
+  await ready();
   await page.getByText('Ульи', { exact: true }).click();
   await expect(page).toHaveURL(/\/ru\/catalog\/$/);
 });
