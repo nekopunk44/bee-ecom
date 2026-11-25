@@ -1,0 +1,450 @@
+/* Админка в стиле витрины «Соты»: графитовая боковая панель, песочный фон рабочей
+   области, белые панели с таблицами и формами. Классы общие для всех разделов. */
+body {
+  background: var(--color-sand);
+}
+body.locked {
+  overflow: hidden;
+}
+
+/* Каркас: панель слева, рабочая область справа. */
+.shell {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+.content {
+  min-width: 0;
+  padding: var(--space-lg) clamp(1rem, 3vw, 2.75rem) var(--space-2xl);
+}
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.page-head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+.page-head p {
+  margin: 0.35rem 0 0;
+  color: var(--color-muted);
+}
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+@media (min-width: 64rem) {
+  .page-actions {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Панели. */
+.panel {
+  min-width: 0;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  box-shadow: 0 1px 2px rgb(23 21 15 / 5%);
+}
+.panel + .panel {
+  margin-top: var(--space-md);
+}
+.panel-title {
+  margin: 0 0 var(--space-md);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.panel.flush {
+  padding: 0;
+  overflow: hidden;
+}
+.panel-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* Кнопки. Классы с тегом сильнее общих правил кнопок из base.css. */
+button.btn,
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+button.btn:hover,
+a.btn:hover {
+  border-color: var(--color-ink);
+}
+button.btn.primary,
+a.btn.primary {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: #ffffff;
+}
+button.btn.primary:hover {
+  background: #2f2b21;
+}
+button.btn.honey {
+  border-color: var(--color-honey);
+  background: var(--color-honey);
+}
+button.btn.honey:hover {
+  border-color: #e6ab00;
+  background: #e6ab00;
+}
+button.btn.quiet {
+  border-color: transparent;
+  background: transparent;
+}
+button.btn.quiet:hover {
+  background: var(--color-sand);
+}
+button.btn.danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+button.btn.icon {
+  width: 2.5rem;
+  padding: 0;
+}
+button.btn.small {
+  min-height: 2.125rem;
+  padding: 0 0.8rem;
+  font-size: 0.875rem;
+}
+button.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Поля форм: подпись над полем, тонкая рамка, медовое кольцо фокуса. */
+label.field {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.field :is(input, select, textarea) {
+  width: 100%;
+  min-height: 2.625rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #dcd5c3;
+  border-radius: 0.75rem;
+  background: var(--color-paper);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+.field textarea {
+  min-height: 6rem;
+}
+.field :is(input, select, textarea):focus {
+  border-color: var(--color-ink);
+  outline: 3px solid var(--color-honey-soft);
+  outline-offset: 0;
+}
+.field .hint {
+  color: var(--color-muted);
+  font-weight: 400;
+}
+.form-grid {
+  display: grid;
+  gap: var(--space-md);
+}
+@media (min-width: 48rem) {
+  .form-grid.two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .form-grid.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* Поиск с лупой внутри поля. */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: min(22rem, 100%);
+}
+.search-box svg {
+  position: absolute;
+  left: 0.9rem;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+.search-box input {
+  width: 100%;
+  min-height: 2.625rem;
+  padding: 0 1rem 0 2.6rem;
+  border: 1px solid #dcd5c3;
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+  font-size: 0.9375rem;
+}
+.search-box input:focus {
+  border-color: var(--color-ink);
+  outline: 3px solid var(--color-honey-soft);
+  outline-offset: 0;
+}
+
+/* Флажки-чипы: выбранный — графитовый. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+label.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  cursor: pointer;
+}
+/* Флажок прозрачный, но лежит поверх чипа: нажатие попадает прямо в него. */
+label.chip input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+label.chip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  padding: 0 0.9rem;
+  border: 1px solid #dcd5c3;
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+label.chip input:checked + span {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: #ffffff;
+}
+label.chip input:focus-visible + span {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Сегменты: выбор одного из нескольких. */
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+  box-shadow: 0 1px 2px rgb(23 21 15 / 5%);
+}
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.segmented button:hover {
+  color: var(--color-ink);
+}
+.segmented button:is([aria-pressed='true'], [aria-current]) {
+  background: var(--color-ink);
+  color: #ffffff;
+}
+.segmented .count {
+  min-width: 1.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-sand);
+  color: var(--color-ink);
+  font-size: 0.75rem;
+  text-align: center;
+}
+.segmented button[aria-pressed='true'] .count {
+  background: var(--color-honey);
+}
+
+/* Таблицы. */
+.table-wrap {
+  overflow-x: auto;
+}
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  text-align: left;
+}
+table.data th {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+table.data td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: middle;
+}
+table.data tbody tr {
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+table.data tbody tr:hover,
+table.data tbody tr.selected {
+  background: #fbf8ef;
+}
+table.data tbody tr:last-child td {
+  border-bottom: 0;
+}
+table.data .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cell-main {
+  display: grid;
+  gap: 0.1rem;
+}
+.cell-main strong {
+  font-weight: 600;
+}
+.muted {
+  color: var(--color-muted);
+}
+small.muted {
+  font-size: 0.8125rem;
+}
+
+/* Метки статуса с точкой. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-sand);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-muted);
+  content: '';
+}
+.badge.honey {
+  background: var(--color-honey-soft);
+}
+.badge.honey::before {
+  background: var(--color-honey);
+}
+.badge.ink {
+  background: var(--color-ink);
+  color: #ffffff;
+}
+.badge.ink::before {
+  background: var(--color-honey);
+}
+.badge.faded {
+  color: var(--color-muted);
+}
+
+/* Сообщения. */
+.message {
+  margin: 0 0 var(--space-md);
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--color-honey-soft);
+  font-weight: 600;
+}
+.message.error {
+  background: #fbe9e7;
+  color: var(--color-danger);
+}
+.empty {
+  padding: var(--space-xl) var(--space-lg);
+  color: var(--color-muted);
+  text-align: center;
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border-top: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.pager div {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* На телефоне панель становится полосой сверху, второстепенные столбцы прячутся. */
+@media (max-width: 63.99rem) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 47.99rem) {
+  table.data .wide-only {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  table.data tbody tr,
+  button.btn,
+  a.btn {
+    transition: none;
+  }
+}

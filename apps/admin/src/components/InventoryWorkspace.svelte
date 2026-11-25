@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api, errorText, type Product } from '../lib/catalog';
+  import Icon from './Icon.svelte';
 
   type Warehouse = { id: string; code: string; name: string; active: boolean };
   let {
@@ -149,125 +150,197 @@
   }
 </script>
 
-<section aria-labelledby="inventory-heading">
-  <h2 id="inventory-heading">Склады и остатки</h2>
-  {#if error}<p role="alert" class="error">{error}</p>{/if}
-  {#if notice}<p role="status">{notice}</p>{/if}
+<header class="page-head">
+  <div>
+    <h1 id="inventory-heading">Склады и остатки</h1>
+    <p>Складов: {warehouses.length}</p>
+  </div>
+</header>
 
-  {#if canManage}
-    <form class="form" onsubmit={createWarehouse}>
-      <h3>Новый склад</h3>
-      <label
-        >Код<input
-          bind:value={warehouseCode}
-          required
-          maxlength="64"
-          pattern="[a-z0-9]+(-[a-z0-9]+)*"
-        /></label
-      >
-      <label
-        >Название<input
-          bind:value={warehouseName}
-          required
-          maxlength="120"
-        /></label
-      >
-      <button class="button" disabled={loading}>Создать склад</button>
-    </form>
-  {/if}
+{#if error}<p role="alert" class="message error">{error}</p>{/if}
+{#if notice}<p role="status" class="message">{notice}</p>{/if}
 
+<div class="layout" aria-busy={loading}>
   {#if canAdjust}
-    <form class="form" onsubmit={adjustInventory}>
-      <h3>Корректировка остатка</h3>
+    <form class="panel" onsubmit={adjustInventory}>
+      <h2 class="panel-title">Корректировка остатка</h2>
       {#if warehouses.length === 0}
-        <p>Сначала создайте склад.</p>
+        <p class="muted">Сначала создайте склад.</p>
       {:else}
-        <label
-          >Склад
-          <select bind:value={selectedWarehouse} required>
-            {#each warehouses as warehouse}<option value={warehouse.id}
-                >{warehouse.name} ({warehouse.code})</option
-              >{/each}
-          </select>
-        </label>
-        <label
-          >Вариант товара
-          <select bind:value={selectedVariant} required>
-            {#each products as product}
-              {#each product.variants.filter((variant) => variant.active) as variant}
-                <option value={variant.id}
-                  >{product.translations.ru.name}, {variant.name}, {variant.sku}</option
-                >
+        <div class="form-grid two">
+          <label class="field"
+            >Склад
+            <select bind:value={selectedWarehouse} required>
+              {#each warehouses as warehouse}<option value={warehouse.id}
+                  >{warehouse.name} ({warehouse.code})</option
+                >{/each}
+            </select>
+          </label>
+          <label class="field"
+            >Изменение количества<input
+              type="number"
+              bind:value={delta}
+              required
+              min="-1000000"
+              max="1000000"
+              step="1"
+            /><span class="hint">Плюс — приход на склад, минус — списание.</span
+            ></label
+          >
+          <label class="field wide"
+            >Вариант товара
+            <select bind:value={selectedVariant} required>
+              {#each products as product}
+                <optgroup label={product.translations.ru.name}>
+                  {#each product.variants.filter((variant) => variant.active) as variant}
+                    <option value={variant.id}
+                      >{product.translations.ru.name}, {variant.name}, {variant.sku}</option
+                    >
+                  {/each}
+                </optgroup>
               {/each}
-            {/each}
-          </select>
-        </label>
-        <label
-          >Изменение количества<input
-            type="number"
-            bind:value={delta}
-            required
-            min="-1000000"
-            max="1000000"
-            step="1"
-          /></label
-        >
-        <label
-          >Причина<input bind:value={reason} required maxlength="240" /></label
-        >
-        <button
-          class="button"
-          disabled={loading || !selectedVariant || !reason.trim()}
-          >Применить изменение</button
-        >
+            </select>
+          </label>
+          <label class="field wide"
+            >Причина<input
+              bind:value={reason}
+              required
+              maxlength="240"
+              placeholder="Приёмка от поставщика, пересчёт, брак"
+            /></label
+          >
+        </div>
+        <div class="submit">
+          {#if lastAdjustment}
+            <p class="result">
+              После изменения: на складе {lastAdjustment.onHand},
+              зарезервировано {lastAdjustment.reserved}.
+            </p>
+          {/if}
+          <button
+            class="btn primary"
+            disabled={loading || !selectedVariant || !reason.trim()}
+            >Применить изменение</button
+          >
+        </div>
       {/if}
     </form>
   {/if}
 
-  {#if lastAdjustment}
-    <p>
-      После изменения: на складе {lastAdjustment.onHand}, зарезервировано {lastAdjustment.reserved}.
-    </p>
-  {/if}
-  <ul aria-label="Список складов">
-    {#each warehouses as warehouse}<li>
-        {warehouse.name} <code>{warehouse.code}</code>
-      </li>{/each}
-  </ul>
-  {#if loading}<p aria-live="polite">Загрузка…</p>{/if}
-</section>
+  <section class="panel warehouses">
+    <h2 class="panel-title">Склады</h2>
+    <ul aria-label="Список складов">
+      {#each warehouses as warehouse (warehouse.id)}<li>
+          <span class="mark" aria-hidden="true"
+            ><Icon name="inventory" size={18} /></span
+          >
+          <span class="cell-main"
+            ><strong>{warehouse.name}</strong><small class="muted"
+              >{warehouse.code}</small
+            ></span
+          >
+        </li>{/each}
+    </ul>
+    {#if !warehouses.length && !loading}<p class="muted">
+        Складов пока нет.
+      </p>{/if}
+    {#if canManage}
+      <form class="new" onsubmit={createWarehouse}>
+        <h3>Новый склад</h3>
+        <label class="field"
+          >Код<input
+            bind:value={warehouseCode}
+            required
+            maxlength="64"
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            placeholder="chisinau"
+          /></label
+        >
+        <label class="field"
+          >Название<input
+            bind:value={warehouseName}
+            required
+            maxlength="120"
+            placeholder="Кишинёв, основной склад"
+          /></label
+        >
+        <button class="btn" disabled={loading}
+          ><Icon name="plus" size={16} />Создать склад</button
+        >
+      </form>
+    {/if}
+  </section>
+</div>
 
 <style>
-  section {
-    margin-block: var(--space-lg);
-  }
-  .form {
+  .layout {
     display: grid;
+    align-items: start;
     gap: var(--space-md);
-    max-width: 42rem;
-    margin-block: var(--space-lg);
-    padding: var(--space-lg);
-    border: 1px solid var(--color-line);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
   }
-  h3 {
+  .layout > .panel + .panel {
+    margin-top: 0;
+  }
+  @media (min-width: 64rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+    }
+  }
+  .field.wide {
+    grid-column: 1 / -1;
+  }
+  .field .hint {
+    font-size: 0.8125rem;
+  }
+  .submit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-sm) var(--space-md);
+    margin-top: var(--space-md);
+  }
+  .result {
+    flex: 1;
     margin: 0;
+    color: var(--color-muted);
+    font-size: 0.875rem;
   }
-  label {
+  ul {
     display: grid;
-    gap: var(--space-xs);
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
-  input,
-  select {
-    min-height: 2.75rem;
-    padding: var(--space-sm);
-    border: 1px solid var(--color-line);
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
     border-radius: var(--radius-sm);
-    background: white;
-    color: var(--color-ink);
+    background: #fbf8ef;
   }
-  .error {
-    color: var(--color-danger);
+  .mark {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.65rem;
+    background: var(--color-honey-soft);
+  }
+  .new {
+    display: grid;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-line);
+  }
+  .new h3 {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+  .new :global(.btn) {
+    justify-self: start;
   }
 </style>

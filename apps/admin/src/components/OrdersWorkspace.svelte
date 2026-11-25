@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import type { components } from '@bee/api-client';
   import { api, errorText } from '../lib/catalog';
+  import Drawer from './Drawer.svelte';
+  import Icon from './Icon.svelte';
 
   type Summary = components['schemas']['AdminOrderSummary'];
   type Order = components['schemas']['Order'];
@@ -10,7 +12,12 @@
   let {
     permissions,
     onExpired,
-  }: { permissions: string[]; onExpired: () => void } = $props();
+    onChanged,
+  }: {
+    permissions: string[];
+    onExpired: () => void;
+    onChanged?: () => void;
+  } = $props();
 
   const pageSize = 25;
   const statuses: Status[] = [
@@ -36,6 +43,15 @@
     shipped: 'Отправленные',
     completed: 'Выполненные',
     cancelled: 'Отменённые',
+  };
+  // Новый заказ ждёт действия — медовая метка; отменённый бледнее остальных.
+  const tone: Record<Status, string> = {
+    new: 'honey',
+    confirmed: '',
+    ready: '',
+    shipped: '',
+    completed: 'ink',
+    cancelled: 'faded',
   };
   const methodLabel: Record<Order['deliveryMethod'], string> = {
     courier: 'Курьер',
@@ -132,8 +148,6 @@
         return;
       }
       prepare(result.data);
-      await tick();
-      document.getElementById('order-heading')?.focus();
     } catch {
       error = errorText();
     } finally {
@@ -184,6 +198,7 @@
       }
       prepare(result.data);
       notice = `Заказ ${result.data.number}: ${statusLabel[result.data.status].toLowerCase()}.`;
+      onChanged?.();
       await load();
     } catch {
       error = errorText();
@@ -201,77 +216,110 @@
   onMount(() => void load());
 </script>
 
-<section class="orders" aria-labelledby="orders-heading">
-  <h2 id="orders-heading" class="visually-hidden">Заказы</h2>
-  {#if error}<p role="alert" class="error">{error}</p>{/if}
-  {#if notice}<p role="status" class="notice">{notice}</p>{/if}
-
-  <div class="filters" role="group" aria-label="Статус заказов">
-    <button
-      aria-pressed={filter === ''}
-      onclick={() => choose('')}
-      disabled={loading}>Все</button
-    >
-    {#each statuses as status (status)}
-      <button
-        aria-pressed={filter === status}
-        onclick={() => choose(status)}
-        disabled={loading}
-        >{filterLabel[status]}{#if counts}<span class="count"
-            >{counts[status]}</span
-          >{/if}</button
-      >
-    {/each}
+<header class="page-head">
+  <div>
+    <h1 id="orders-heading">Заказы</h1>
+    <p>
+      {filter ? filterLabel[filter] : 'Все'}: {total}
+    </p>
   </div>
-
-  <form
-    class="search"
-    onsubmit={(event) => {
-      event.preventDefault();
-      page = 1;
-      void load();
-    }}
-  >
-    <label
-      >Поиск заказа<input
+  <div class="page-actions">
+    <form
+      class="search-box"
+      role="search"
+      onsubmit={(event) => {
+        event.preventDefault();
+        page = 1;
+        void load();
+      }}
+    >
+      <Icon name="search" size={18} />
+      <input
         bind:value={query}
+        type="search"
         maxlength="120"
         placeholder="Номер, имя или телефон"
-      /></label
-    ><button type="submit" disabled={loading}>Найти</button>
-  </form>
+        aria-label="Поиск заказа"
+      />
+    </form>
+  </div>
+</header>
 
-  <div class="table-wrap" aria-busy={loading}>
-    <table>
-      <caption>Заказы — {total}</caption>
+{#if error && !order}<p role="alert" class="message error">{error}</p>{/if}
+{#if notice && !order}<p role="status" class="message">{notice}</p>{/if}
+
+<div class="segmented filters" role="group" aria-label="Статус заказов">
+  <button
+    type="button"
+    aria-pressed={filter === ''}
+    onclick={() => choose('')}
+    disabled={loading}>Все</button
+  >
+  {#each statuses as status (status)}
+    <button
+      type="button"
+      aria-pressed={filter === status}
+      onclick={() => choose(status)}
+      disabled={loading}
+      >{filterLabel[status]}{#if counts}<span class="count"
+          >{counts[status]}</span
+        >{/if}</button
+    >
+  {/each}
+</div>
+
+<section
+  class="panel flush"
+  aria-labelledby="orders-heading"
+  aria-busy={loading}
+>
+  <div class="table-wrap">
+    <table class="data">
+      <caption class="visually-hidden">Заказы — {total}</caption>
       <thead>
         <tr>
-          <th>Номер</th><th>Создан</th><th>Получатель</th><th>Получение</th><th
-            >Сумма</th
-          ><th>Статус</th><th>Действие</th>
+          <th>Номер</th><th class="wide-only">Создан</th><th>Получатель</th><th
+            class="wide-only">Получение</th
+          ><th class="num">Сумма</th><th>Статус</th><th
+            ><span class="visually-hidden">Действие</span></th
+          >
         </tr>
       </thead>
       <tbody>
         {#each orders as item (item.id)}
           <tr class:selected={order?.id === item.id}>
             <td><strong>{item.number}</strong></td>
-            <td>{date.format(new Date(item.createdAt))}</td>
-            <td>{item.recipientName}<br /><small>{item.phone}</small></td>
-            <td>{methodLabel[item.deliveryMethod]}</td>
-            <td
-              >{formatMoney(
-                item.totalMinor ?? item.itemsTotalMinor,
-              )}{#if item.totalMinor === null}<br /><small>без доставки</small
-                >{/if}</td
+            <td class="muted wide-only"
+              >{date.format(new Date(item.createdAt))}</td
             >
             <td
-              ><span class={`status ${item.status}`}
-                >{statusLabel[item.status]}</span
+              ><span class="cell-main"
+                ><span>{item.recipientName}</span><small class="muted"
+                  >{item.phone}</small
+                ></span
+              ></td
+            >
+            <td class="wide-only">{methodLabel[item.deliveryMethod]}</td>
+            <td class="num"
+              ><span class="cell-main"
+                ><span
+                  >{formatMoney(item.totalMinor ?? item.itemsTotalMinor)}</span
+                >{#if item.totalMinor === null}<small class="muted"
+                    >без доставки</small
+                  >{/if}</span
               ></td
             >
             <td
-              ><button onclick={() => open(item.id)} disabled={busy}
-                >Открыть</button
+              ><span class="badge {tone[item.status]}"
+                >{statusLabel[item.status]}</span
+              ></td
+            >
+            <td class="action"
+              ><button
+                class="btn small"
+                type="button"
+                onclick={() => open(item.id)}
+                disabled={busy}>Открыть<Icon name="arrow" size={16} /></button
               ></td
             >
           </tr>
@@ -279,36 +327,48 @@
       </tbody>
     </table>
   </div>
-  {#if !orders.length && !loading}<p>
+  {#if !orders.length && !loading}<p class="empty">
       Заказов с таким статусом или по такому запросу нет.
     </p>{/if}
   {#if total > pageSize}
-    <div class="pagination">
-      <button
-        disabled={page === 1 || loading}
-        onclick={() => {
-          page--;
-          void load();
-        }}>Назад</button
-      ><span>{page} / {Math.ceil(total / pageSize)}</span><button
-        disabled={page * pageSize >= total || loading}
-        onclick={() => {
-          page++;
-          void load();
-        }}>Далее</button
-      >
+    <div class="pager">
+      <span>Страница {page} из {Math.ceil(total / pageSize)}</span>
+      <div>
+        <button
+          class="btn small"
+          type="button"
+          disabled={page === 1 || loading}
+          onclick={() => {
+            page--;
+            void load();
+          }}>Назад</button
+        ><button
+          class="btn small"
+          type="button"
+          disabled={page * pageSize >= total || loading}
+          onclick={() => {
+            page++;
+            void load();
+          }}>Далее</button
+        >
+      </div>
     </div>
   {/if}
+</section>
 
-  {#if order}
-    <article class="detail" aria-labelledby="order-heading">
-      <header>
-        <h3 id="order-heading" tabindex="-1">Заказ {order.number}</h3>
-        <span class={`status ${order.status}`}>{statusLabel[order.status]}</span
+{#if order}
+  <Drawer title={`Заказ ${order.number}`} onClose={() => (order = null)}>
+    {#if error}<p role="alert" class="message error">{error}</p>{/if}
+    {#if notice}<p role="status" class="message">{notice}</p>{/if}
+    <article class="detail" aria-label="Карточка заказа">
+      <div class="status-line">
+        <span class="badge {tone[order.status]}"
+          >{statusLabel[order.status]}</span
         >
-        <button class="close" onclick={() => (order = null)}>Закрыть</button>
-      </header>
-      <div class="columns">
+        <span class="muted">{date.format(new Date(order.createdAt))}</span>
+      </div>
+      <section class="panel">
+        <h3 class="panel-title">Покупатель и получение</h3>
         <dl>
           <dt>Получатель</dt>
           <dd>
@@ -339,51 +399,71 @@
           <dt>Оплата</dt>
           <dd>При получении</dd>
         </dl>
-        <div>
-          <table class="items">
-            <caption class="visually-hidden">Товары заказа</caption>
-            <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th></tr></thead>
-            <tbody>
-              {#each order.items as line (line.variantId)}
-                <tr>
-                  <td
-                    >{line.name}<br /><small
+      </section>
+      <section class="panel">
+        <h3 class="panel-title">Товары</h3>
+        <table class="data items">
+          <caption class="visually-hidden">Товары заказа</caption>
+          <thead
+            ><tr
+              ><th>Товар</th><th class="num">Кол-во</th><th class="num"
+                >Сумма</th
+              ></tr
+            ></thead
+          >
+          <tbody>
+            {#each order.items as line (line.variantId)}
+              <tr>
+                <td
+                  ><span class="cell-main"
+                    ><span>{line.name}</span><small class="muted"
                       >{line.variantName}, {line.sku}</small
-                    ></td
-                  >
-                  <td>{line.quantity}</td>
-                  <td>{formatMoney(line.unitPriceMinor * line.quantity)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-          <p class="sum">
-            Товары {formatMoney(order.itemsTotalMinor)} · доставка {order.deliveryPriceMinor ===
-            null
+                    ></span
+                  ></td
+                >
+                <td class="num">{line.quantity}</td>
+                <td class="num"
+                  >{formatMoney(line.unitPriceMinor * line.quantity)}</td
+                >
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+        <dl class="sum">
+          <dt>Товары</dt>
+          <dd>{formatMoney(order.itemsTotalMinor)}</dd>
+          <dt>Доставка</dt>
+          <dd>
+            {order.deliveryPriceMinor === null
               ? 'не указана'
-              : formatMoney(order.deliveryPriceMinor)}<br /><strong
-              >Итого {formatMoney(
-                order.totalMinor ?? order.itemsTotalMinor,
-              )}</strong
-            >
-          </p>
-        </div>
-      </div>
+              : formatMoney(order.deliveryPriceMinor)}
+          </dd>
+          <dt class="total">Итого</dt>
+          <dd class="total">
+            {formatMoney(order.totalMinor ?? order.itemsTotalMinor)}
+          </dd>
+        </dl>
+      </section>
+      <section class="panel">
+        <h3 class="panel-title">История</h3>
+        <ol class="history" aria-label="История">
+          {#each order.history as step (step.at + step.status)}
+            <li>
+              <strong>{statusLabel[step.status]}</strong>
+              <span class="muted">{date.format(new Date(step.at))}</span>
+            </li>
+          {/each}
+        </ol>
+      </section>
+    </article>
 
-      <ol class="history" aria-label="История">
-        {#each order.history as step (step.at + step.status)}
-          <li>
-            <strong>{statusLabel[step.status]}</strong>
-            {date.format(new Date(step.at))}
-          </li>
-        {/each}
-      </ol>
-
-      {#if canManage && !['completed', 'cancelled'].includes(order.status)}
-        <div class="actions">
+    {#if canManage && !['completed', 'cancelled'].includes(order.status)}
+      <section class="panel actions">
+        <h3 class="panel-title">Следующий шаг</h3>
+        <div class="action-row">
           {#if order.status === 'new'}
             {#if order.deliveryMethod !== 'pickup'}
-              <label
+              <label class="field"
                 >Цена доставки, леев<input
                   bind:value={price}
                   inputmode="decimal"
@@ -392,195 +472,106 @@
               >
             {/if}
             <button
-              class="button"
+              class="btn primary"
+              type="button"
               onclick={() => move('confirmed')}
               disabled={busy}>Подтвердить</button
             >
           {:else if order.status === 'confirmed'}
-            <button class="button" onclick={() => move('ready')} disabled={busy}
-              >Собран</button
+            <button
+              class="btn primary"
+              type="button"
+              onclick={() => move('ready')}
+              disabled={busy}>Собран</button
             >
           {:else if order.status === 'ready' && order.deliveryMethod === 'pickup'}
             <button
-              class="button"
+              class="btn primary"
+              type="button"
               onclick={() => move('completed')}
               disabled={busy}>Выдан покупателю</button
             >
           {:else if order.status === 'ready'}
-            <label
-              >Трек-номер <span>(необязательно)</span><input
+            <label class="field"
+              >Трек-номер <span class="hint">(необязательно)</span><input
                 bind:value={tracking}
                 maxlength="64"
               /></label
             >
             <button
-              class="button"
+              class="btn primary"
+              type="button"
               onclick={() => move('shipped')}
               disabled={busy}>Отправлен</button
             >
           {:else if order.status === 'shipped'}
             <button
-              class="button"
+              class="btn primary"
+              type="button"
               onclick={() => move('completed')}
               disabled={busy}>Доставлен</button
             >
           {/if}
-          {#if ['new', 'confirmed', 'ready'].includes(order.status)}
+        </div>
+        {#if ['new', 'confirmed', 'ready'].includes(order.status)}
+          <div class="cancel">
             {#if confirmingCancel}
               <p class="warning">
                 Отменить заказ? Отложенный товар вернётся в свободный остаток.
               </p>
               <button
-                class="danger"
+                class="btn danger"
+                type="button"
                 onclick={() => move('cancelled')}
                 disabled={busy}>Да, отменить</button
               >
-              <button onclick={() => (confirmingCancel = false)} disabled={busy}
-                >Не отменять</button
+              <button
+                class="btn quiet"
+                type="button"
+                onclick={() => (confirmingCancel = false)}
+                disabled={busy}>Не отменять</button
               >
             {:else}
-              <button onclick={() => (confirmingCancel = true)} disabled={busy}
-                >Отменить заказ</button
+              <button
+                class="btn quiet"
+                type="button"
+                onclick={() => (confirmingCancel = true)}
+                disabled={busy}>Отменить заказ</button
               >
             {/if}
-          {/if}
-        </div>
-      {/if}
-    </article>
-  {/if}
-</section>
+          </div>
+        {/if}
+      </section>
+    {/if}
+  </Drawer>
+{/if}
 
 <style>
-  .orders {
-    display: grid;
-    gap: var(--space-md);
-  }
   .filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
+    margin-bottom: var(--space-md);
   }
-  .filters button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    border-radius: var(--radius-pill);
-  }
-  .filters button[aria-pressed='true'] {
-    background: var(--color-ink);
-    color: #ffffff;
-  }
-  .count {
-    min-width: 1.5rem;
-    padding: 0 0.4rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-honey-soft);
-    color: var(--color-ink);
-    font-size: var(--text-sm);
-    text-align: center;
-  }
-  .search {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: var(--space-sm);
-  }
-  .search label {
-    margin: 0;
-  }
-  .search button {
-    min-height: 3.25rem;
-  }
-  .table-wrap {
-    overflow: auto;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-  }
-  thead tr {
-    border-bottom: 2px solid var(--color-ink);
-  }
-  th {
-    color: var(--color-muted);
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-  th,
-  td {
-    padding: var(--space-sm);
-    border-bottom: 1px solid var(--color-line);
-    vertical-align: top;
-  }
-  caption {
-    padding-block: var(--space-sm);
-    text-align: left;
-    font-family: var(--font-display);
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-  tr.selected {
-    background: var(--color-honey-soft);
-  }
-  small {
-    color: var(--color-muted);
-    font-size: var(--text-sm);
-  }
-  .status {
-    display: inline-block;
-    padding: 0.1rem 0.6rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-sand);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .status.new {
-    background: var(--color-honey);
-  }
-  .status.cancelled {
-    color: var(--color-muted);
-  }
-  .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: var(--space-md);
+  .action {
+    text-align: right;
   }
   .detail {
     display: grid;
     gap: var(--space-md);
-    padding: var(--space-lg);
-    border: 2px solid var(--color-ink);
-    border-radius: var(--radius-lg);
-    background: var(--color-paper);
   }
-  .detail header {
+  .detail .panel + .panel {
+    margin-top: 0;
+  }
+  .status-line {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-sm);
-  }
-  .detail h3 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    letter-spacing: -0.03em;
-  }
-  .close {
-    margin-left: auto;
-  }
-  .columns {
-    display: grid;
-    gap: var(--space-lg);
+    font-size: 0.875rem;
   }
   dl {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
-    gap: var(--space-xs) var(--space-md);
+    gap: 0.45rem var(--space-md);
     margin: 0;
+    font-size: 0.9375rem;
   }
   dt {
     color: var(--color-muted);
@@ -589,58 +580,71 @@
     margin: 0;
     overflow-wrap: anywhere;
   }
+  .items th:first-child,
+  .items td:first-child {
+    padding-left: 0;
+  }
+  .items th:last-child,
+  .items td:last-child {
+    padding-right: 0;
+  }
   .sum {
-    margin: var(--space-sm) 0 0;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--color-line);
+  }
+  .sum dd {
     text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .sum .total {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 800;
   }
   .history {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0 0 0 1.1rem;
+    border-left: 2px solid var(--color-honey);
+    list-style: none;
+  }
+  .history li {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-xs) var(--space-lg);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    color: var(--color-muted);
-  }
-  .history strong {
-    color: var(--color-ink);
+    gap: 0.5rem;
   }
   .actions {
+    margin-top: var(--space-md);
+    border: 2px solid var(--color-ink);
+  }
+  .action-row {
     display: flex;
     flex-wrap: wrap;
     align-items: end;
     gap: var(--space-sm);
-    padding-top: var(--space-md);
+  }
+  .action-row .field {
+    flex: 1 1 12rem;
+  }
+  .action-row :global(.btn) {
+    min-height: 2.625rem;
+  }
+  .cancel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    padding-top: var(--space-sm);
     border-top: 1px solid var(--color-line);
-  }
-  .actions label {
-    margin: 0;
-  }
-  .actions label span {
-    color: var(--color-muted);
-    font-weight: 400;
-  }
-  .actions button {
-    min-height: 3.25rem;
   }
   .warning {
     flex-basis: 100%;
     margin: 0;
     font-weight: 600;
-  }
-  .danger {
-    border-color: var(--color-danger);
-    color: var(--color-danger);
-  }
-  .error {
-    color: var(--color-danger);
-  }
-  .notice {
-    font-weight: 600;
-  }
-  @media (min-width: 64rem) {
-    .columns {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-    }
   }
 </style>
