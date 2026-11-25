@@ -106,3 +106,19 @@ test('a card with several photos flips through them under the mouse', async ({
   await page.mouse.move(0, 0);
   await expect(dots.nth(0)).toHaveAttribute('data-current', '');
 });
+
+test('demo photos are credited to their authors', async ({ page }) => {
+  await page.goto('http://127.0.0.1:4321/ru/photo-credits/');
+  await expect(
+    page.getByRole('heading', { name: 'Авторы фото', level: 1 }),
+  ).toBeVisible();
+  const sources = page.getByRole('link', { name: 'Источник' });
+  expect(await sources.count()).toBeGreaterThan(20);
+  await expect(sources.first()).toHaveAttribute(
+    'href',
+    /^https:\/\/commons\.wikimedia\.org\//,
+  );
+  await expect(
+    page.getByRole('contentinfo').getByRole('link', { name: 'Авторы фото' }),
+  ).toBeVisible();
+});

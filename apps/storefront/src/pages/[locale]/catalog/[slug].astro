@@ -5,6 +5,7 @@ import StoreFooter from '../../../components/StoreFooter.astro';
 import HexMark from '../../../components/HexMark.astro';
 import AddToCart from '../../../components/AddToCart.svelte';
 import { isLocale } from '../../../i18n';
+import { demoPhotos } from '../../../lib/photo-credits';
 import {
   catalogApi,
   catalogText,
@@ -39,6 +40,8 @@ try {
 }
 const translation = product?.translations[locale];
 const hero = product?.images[0];
+// Свободные фото демо-каталога подписываются автором и лицензией прямо под снимком.
+const credits = product ? (demoPhotos[product.slug] ?? []) : [];
 const variants = product?.variants.filter((v) => v.active) ?? [];
 const single = variants.length === 1;
 const lowest = Math.min(...variants.map((v) => v.priceMinor));
@@ -132,6 +135,21 @@ const structured = product
                 ))}
               </ul>
             )}
+            {credits.length > 0 && (
+              <p class="credits">
+                {t.photo}:{' '}
+                {credits.map((credit, index) => (
+                  <>
+                    {index > 0 && ', '}
+                    <a href={credit.page} rel="noopener" target="_blank">
+                      {credit.author}
+                    </a>{' '}
+                    ({credit.license})
+                  </>
+                ))}
+                , Wikimedia Commons
+              </p>
+            )}
           </div>
           <div class="buy">
             <p class="eyebrow rise">{label}</p>
@@ -217,6 +235,15 @@ const structured = product
   <StoreFooter locale={locale} />
 </Layout>
 <style>
+  .credits {
+    margin: var(--space-sm) 0 0;
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+  .credits a {
+    color: inherit;
+  }
   main {
     padding-top: var(--space-lg);
   }
@@ -256,8 +283,7 @@ const structured = product
   .hero img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    mix-blend-mode: multiply;
+    object-fit: cover;
   }
   .placeholder {
     display: grid;
@@ -284,8 +310,7 @@ const structured = product
   .gallery img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    mix-blend-mode: multiply;
+    object-fit: cover;
   }
   .buy .eyebrow {
     margin: 0;
