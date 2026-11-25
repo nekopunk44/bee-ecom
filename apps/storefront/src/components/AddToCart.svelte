@@ -1,11 +1,10 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
   import { backOut } from 'svelte/easing';
-  import { createApiClient } from '@bee/api-client';
+  import { addOne } from '../lib/cart';
   import { flyToCart } from '../lib/motion';
   import type { Locale } from '../i18n';
   let { variantId, locale }: { variantId: string; locale: Locale } = $props();
-  const api = createApiClient();
   const copy = {
     ru: {
       add: 'В корзину',
@@ -34,41 +33,20 @@
     busy = true;
     error = '';
     needsLogin = false;
-    try {
-      // API задаёт количество, а не прибавляет: берём то, что уже лежит в корзине, и добавляем одну штуку.
-      const current = await api.GET('/api/v1/cart', {
-        params: { query: { locale } },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (current.error) {
-        needsLogin = current.response.status === 401;
-        error = needsLogin ? copy.signIn : copy.failed;
-        return;
-      }
-      const inCart =
-        current.data.items.find((item) => item.variantId === variantId)
-          ?.quantity ?? 0;
-      if (inCart >= 100) {
-        error = copy.limit;
-        return;
-      }
-      const result = await api.POST('/api/v1/cart/items', {
-        params: { query: { locale } },
-        body: { variantId, quantity: inCart + 1 },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (result.error) {
-        needsLogin = result.response.status === 401;
-        error = needsLogin ? copy.signIn : copy.failed;
-        return;
-      }
+    const result = await addOne(variantId, locale);
+    busy = false;
+    if (result === 'added') {
       done = true;
       if (button) flyToCart(button);
-    } catch {
-      error = copy.failed;
-    } finally {
-      busy = false;
+      return;
     }
+    needsLogin = result === 'login';
+    error =
+      result === 'login'
+        ? copy.signIn
+        : result === 'limit'
+          ? copy.limit
+          : copy.failed;
   }
 </script>
 
