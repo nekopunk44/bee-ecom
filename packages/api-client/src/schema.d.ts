@@ -262,6 +262,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Outside sign-in providers this stand has configured */
+        get: operations["getSignInProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Send the browser to Google (authorization code flow with PKCE) */
+        get: operations["startGoogleSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Google returns here; a customer session starts and the browser goes back */
+        get: operations["finishGoogleSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cart": {
         parameters: {
             query?: never;
@@ -1315,6 +1366,70 @@ export interface operations {
                 content?: never;
             };
             default: components["responses"]["ApiError"];
+        };
+    };
+    getSignInProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Which providers can be offered */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        google: boolean;
+                    };
+                };
+            };
+        };
+    };
+    startGoogleSignIn: {
+        parameters: {
+            query?: {
+                /** @description Storefront page to come back to, such as /ru/catalog/ */
+                return?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google, or back with signin=google-off when the provider is not configured */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    finishGoogleSignIn: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Back to the storefront page with signin=google or signin=google-failed */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getCustomerCart: {

@@ -12,6 +12,7 @@ public:
     int consumeAttempt(const std::string& hash) const;
     void createSession(const std::string& hash,const std::string& user) const;
     void revoke(const std::string& hash) const;
+    drogon::orm::Result googleUser(const std::string& subject, const std::string& email) const;
 private:
     drogon::orm::DbClientPtr db_;
 };

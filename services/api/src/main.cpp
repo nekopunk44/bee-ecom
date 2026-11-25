@@ -7,6 +7,7 @@
 #include "modules/inventory/Inventory.hpp"
 #include "modules/cart/Cart.hpp"
 #include "modules/orders/Orders.hpp"
+#include "modules/auth/Google.hpp"
 #include <sodium.h>
 #include <curl/curl.h>
 #include <vips/vips.h>
@@ -44,10 +45,12 @@ int main() {
         redis->setTimeout(2.0);
         bee::configureHttp();
         bee::Executor executor(4);
-        auto auth = std::make_shared<bee::auth::Service>(postgres,
-            config.environment=="production" || config.environment=="staging",
+        const bool secure = config.environment=="production" || config.environment=="staging";
+        auto auth = std::make_shared<bee::auth::Service>(postgres, secure,
             bee::auth::requiredEnv("ADMIN_ORIGIN"), bee::auth::requiredEnv("STOREFRONT_ORIGIN"));
         bee::auth::registerRoutes(auth,executor);
+        bee::auth::registerGoogleRoutes(std::make_shared<bee::auth::Google>(auth, secure,
+            bee::auth::requiredEnv("STOREFRONT_ORIGIN")), executor);
         bee::catalog::registerRoutes(std::make_shared<bee::catalog::Service>(std::make_shared<bee::catalog::Repository>(postgres)),auth,executor);
         bee::media::registerRoutes(std::make_shared<bee::media::Service>(postgres,std::make_shared<bee::media::S3Storage>()),auth,executor);
         bee::inventory::registerRoutes(std::make_shared<bee::inventory::Service>(postgres),auth,executor);

@@ -48,4 +48,32 @@ void Repository::createSession(const std::string& hash,const std::string& user) 
 void Repository::revoke(const std::string& hash) const {
     db_->execSqlSync("DELETE FROM sessions WHERE token_hash=$1",hash);
 }
+drogon::orm::Result Repository::googleUser(const std::string& subject, const std::string& email) const {
+    // Known Google subject first; otherwise a customer account with the same verified
+    // email is linked, or a new customer is created. Staff accounts are never joined
+    // by email: they keep signing in with a password. "!external" never verifies.
+    return db_->execSqlSync(R"SQL(
+        WITH known AS (
+            SELECT u.id, u.email, u.active FROM user_identities i JOIN users u ON u.id = i.user_id
+            WHERE i.provider = 'google' AND i.subject = $1
+        ), by_email AS (
+            SELECT u.id, u.email, u.active FROM users u
+            WHERE u.email = $2 AND NOT EXISTS (SELECT 1 FROM known)
+              AND NOT EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.id AND r.role_code <> 'CUSTOMER')
+        ), created AS (
+            INSERT INTO users(email, password_hash)
+            SELECT $2, '!external'
+            WHERE NOT EXISTS (SELECT 1 FROM known) AND NOT EXISTS (SELECT 1 FROM users WHERE email = $2)
+            RETURNING id, email, active
+        ), assigned AS (
+            INSERT INTO user_roles(user_id, role_code) SELECT id, 'CUSTOMER' FROM created
+        ), chosen AS (
+            SELECT * FROM known UNION ALL SELECT * FROM by_email UNION ALL SELECT * FROM created
+        ), linked AS (
+            INSERT INTO user_identities(provider, subject, user_id)
+            SELECT 'google', $1, id FROM chosen ON CONFLICT (provider, subject) DO NOTHING
+        )
+        SELECT id::text, email, active FROM chosen
+    )SQL", subject, email);
+}
 }

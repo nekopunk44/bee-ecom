@@ -57,6 +57,12 @@ services:
         sync: false
       - key: S3_REGION
         sync: false
+      # Google sign-in: OAuth client of type "Web application" with the redirect URI
+      # https://bee-ecom.vercel.app/api/v1/auth/google/callback. Empty keeps it off.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
       # Entered in the Render dashboard; the first start creates this administrator.
       - key: BEE_ADMIN_EMAIL
         sync: false

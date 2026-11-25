@@ -99,3 +99,19 @@ the API start and uploads answer 503.
   Here the proxy chain decides it; the limit per email works as before.
 - The database starts empty: create categories and products in the admin.
 - Vercel's free Hobby plan allows non-commercial use only.
+
+## Sign-in with Google
+
+The storefront account window offers "Войти через Google" once the API has an OAuth
+client. Without one the button is hidden and nothing else changes.
+
+1. Google Cloud console → create a project → **APIs & Services → OAuth consent screen**:
+   type **External**, app name, support email.
+2. **Credentials → Create credentials → OAuth client ID**, type **Web application**.
+   Authorized redirect URI: `https://bee-ecom.vercel.app/api/v1/auth/google/callback`
+   (the storefront origin, so the session cookie stays first-party).
+3. Render, `bee-ecom-api` → Environment: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+The API runs the authorization code flow with PKCE. A known Google account signs in to
+its customer account; a customer with the same verified email is linked; a new person
+gets a customer account. Staff emails are never joined to Google and keep the password.

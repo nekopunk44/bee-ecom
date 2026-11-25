@@ -20,6 +20,7 @@ add_library(bee_application
   services/api/src/platform/Http.cpp
   services/api/src/modules/auth/Auth.cpp
   services/api/src/modules/auth/AuthRepository.cpp
+  services/api/src/modules/auth/Google.cpp
   services/api/src/modules/catalog/CatalogController.cpp
   services/api/src/modules/catalog/CatalogService.cpp
   services/api/src/modules/catalog/CatalogRepository.cpp
@@ -55,5 +56,8 @@ if(BUILD_TESTING)
   add_executable(config-tests services/api/tests/config_test.cpp)
   target_link_libraries(config-tests PRIVATE bee_platform)
   add_test(NAME configuration COMMAND config-tests)
+  add_executable(google-tests services/api/tests/google_test.cpp)
+  target_link_libraries(google-tests PRIVATE bee_application)
+  add_test(NAME google-sign-in COMMAND google-tests)
 endif()
 install(TARGETS bee-api bee-worker RUNTIME DESTINATION bin)

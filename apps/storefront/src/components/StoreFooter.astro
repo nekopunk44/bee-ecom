@@ -37,7 +37,9 @@ const text = {
     <nav aria-label={text.nav}>
       <a href={`/${locale}/catalog/`}>{catalogText[locale].catalog}</a>
       <a href={`/${locale}/cart/`}>{text.cart}</a>
-      <a href={`/${locale}/account/`}>{text.account}</a>
+      <a href={`/${locale}/account/`} data-account-trigger>
+        {text.account}
+      </a>
       <a href={`/${locale}/photo-credits/`}>
         {catalogText[locale].photoCredits}
       </a>

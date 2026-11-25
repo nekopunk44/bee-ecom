@@ -20,6 +20,14 @@ std::string hashToken(const std::string& token) {
     sodium_bin2hex(hex, sizeof hex, digest, sizeof digest);
     return hex;
 }
+namespace {
+// 32 random bytes as 64 hex characters: the session token the browser keeps.
+std::string newToken() {
+    unsigned char random[32]; char token[65];
+    randombytes_buf(random, sizeof random); sodium_bin2hex(token, sizeof token, random, sizeof random);
+    return token;
+}
+}
 std::string hashPassword(const std::string& password) {
     char hash[crypto_pwhash_STRBYTES];
     if (crypto_pwhash_str_alg(hash, password.data(), password.size(), 2, 64 * 1024 * 1024, crypto_pwhash_ALG_ARGON2ID13) != 0)
@@ -73,8 +81,7 @@ Login Service::login(const std::string& rawEmail, const std::string& password, c
     const bool verified = crypto_pwhash_str_verify(hash.c_str(), password.data(), password.size()) == 0;
     if (!verified || rows.empty() || !rows[0]["active"].as<bool>())
         throw Error(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
-    unsigned char random[32]; char token[65];
-    randombytes_buf(random, sizeof random); sodium_bin2hex(token, sizeof token, random, sizeof random);
+    const auto token = newToken();
     const auto id = rows[0]["id"].as<std::string>();
     repository_.createSession(hashToken(token),id);
     return {token, {id, email, Json::Value(Json::arrayValue)}};
@@ -95,12 +102,18 @@ Login Service::registerCustomer(const std::string& rawEmail, const std::string& 
         repository_.consumeAttempt(hashToken("register-address:" + address)) > 10)
         throw Error(429, "RATE_LIMITED", "Too many registration attempts. Try again later");
 
-    unsigned char random[32]; char token[65];
-    randombytes_buf(random, sizeof random); sodium_bin2hex(token, sizeof token, random, sizeof random);
+    const auto token = newToken();
     const auto rows = repository_.registerCustomer(email, hashPassword(password), hashToken(token));
     if (rows.empty()) throw Error(409, "EMAIL_UNAVAILABLE", "This email address is already registered");
     Json::Value permissions(Json::arrayValue);
     return {token, {rows[0]["id"].as<std::string>(), email, permissions}};
+}
+std::optional<std::string> Service::signInWithGoogle(const std::string& subject, const std::string& email) {
+    const auto rows = repository_.googleUser(subject, email);
+    if (rows.empty() || !rows[0]["active"].as<bool>()) return std::nullopt;
+    const auto token = newToken();
+    repository_.createSession(hashToken(token), rows[0]["id"].as<std::string>());
+    return token;
 }
 void Service::logout(const drogon::HttpRequestPtr& request) const {
     repository_.revoke(hashToken(request->getCookie("bee_session")));

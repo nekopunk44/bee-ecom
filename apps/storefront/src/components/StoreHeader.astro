@@ -96,7 +96,12 @@ const text = {
           {favorites}
         </b>
       </a>
-      <a class="icon" href={`/${locale}/account/`} aria-label={text.account}>
+      <a
+        class="icon account"
+        href={`/${locale}/account/`}
+        aria-label={text.account}
+        data-account-trigger
+      >
         <svg
           width="22"
           height="22"
@@ -148,6 +153,33 @@ const text = {
 </header>
 
 <script>
+  // Значок аккаунта открывает окно поверх страницы. Само окно (Svelte) загружается
+  // при первом нажатии, поэтому на страницах без нужды в нём нет ни байта.
+  const locale = document.documentElement.lang === 'ro' ? 'ro' : 'ru';
+  const account = (outcome?: string | null) =>
+    import('../lib/account-dialog').then(({ openAccount }) =>
+      openAccount(locale, outcome),
+    );
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target?.closest('[data-account-trigger]')) return;
+    event.preventDefault();
+    void account();
+  });
+  // Вернулись от Google: показываем итог и убираем пометку из адреса.
+  const outcome = new URLSearchParams(location.search).get('signin');
+  if (outcome) {
+    const url = new URL(location.href);
+    url.searchParams.delete('signin');
+    history.replaceState(history.state, '', url);
+    void account(outcome);
+  }
+  // Обработчик на месте: до этого значок просто вёл на страницу аккаунта.
+  document.documentElement.toggleAttribute('data-account-dialog', true);
+
   // Число на сердечке в шапке меняется сразу, как только товар отмечен в карточке.
   document.addEventListener('bee:favorites', (event) => {
     const total = (event as CustomEvent<number>).detail;
@@ -247,8 +279,24 @@ const text = {
   .icon:hover {
     background: var(--header-raised);
   }
-  .favorites {
+  .favorites,
+  .account {
     position: relative;
+  }
+  /* Вошедший покупатель: медовая точка на значке аккаунта. */
+  .account[data-signed-in]::after {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border: 2px solid var(--color-paper);
+    border-radius: 50%;
+    background: var(--color-honey);
+    content: '';
+  }
+  header[data-tone='night'] .account[data-signed-in]::after {
+    border-color: var(--color-night);
   }
   .favorites b {
     position: absolute;
