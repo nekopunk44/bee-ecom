@@ -148,6 +148,16 @@ const columns = Array.from({ length: BUCKETS }, (_, index) => {
   /* Ползунок и поля «от — до» связаны в обе стороны. В адрес уходят только поля:
      у ползунков нет имени. Крайнее положение ползунка — граница не задана. */
   for (const box of document.querySelectorAll<HTMLElement>('[data-price]')) {
+    // Соты наливаются при загрузке: столбики слева направо, ячейки снизу вверх.
+    // Номера ячеек ставятся через CSSOM: встроенный style запрещён CSP.
+    const comb = box.querySelector<SVGElement>('.comb');
+    comb?.querySelectorAll('g').forEach((column, index) => {
+      column.style.setProperty('--column', String(index));
+      column.querySelectorAll('polygon').forEach((cell, row) => {
+        cell.style.setProperty('--row', String(row));
+      });
+    });
+    comb?.setAttribute('data-animate', '');
     const slider = box.querySelector<HTMLElement>('[data-slider]');
     const [lower, upper] = slider?.querySelectorAll('input') ?? [];
     const minField = box.querySelector<HTMLInputElement>('input[name="min"]');
@@ -249,7 +259,7 @@ const columns = Array.from({ length: BUCKETS }, (_, index) => {
   .readout input {
     width: 5.5ch;
     field-sizing: content;
-    min-width: 2ch;
+    min-width: 1ch;
     padding: 0 0 0.1rem;
     border: 0;
     border-bottom: 2px dashed var(--color-muted);
@@ -292,15 +302,37 @@ const columns = Array.from({ length: BUCKETS }, (_, index) => {
     height: auto;
     margin: var(--space-xs) calc(var(--thumb) / 2) 0;
   }
+  /* Ячейки вне диапазона — воск, чуть меньше; в диапазоне — мёд в полный размер.
+     Когда ползунок проходит столбик, мёд поднимается снизу вверх и стекает сверху. */
   .comb polygon {
     fill: rgb(23 21 15 / 5%);
-    transition: fill var(--motion-normal) var(--ease-standard);
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      fill var(--motion-normal) var(--ease-standard),
+      scale var(--motion-normal) var(--ease-standard);
+    transition-delay: calc((4 - var(--row, 0)) * 35ms);
   }
   .comb polygon.full {
     fill: #d6cdb4;
+    scale: 0.82;
   }
   .comb [data-selected] polygon.full {
     fill: var(--color-honey);
+    scale: 1;
+    transition-delay: calc(var(--row, 0) * 35ms);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .comb[data-animate] polygon.full {
+      animation: cell-in 520ms var(--ease-standard) backwards;
+      animation-delay: calc(var(--column, 0) * 20ms + var(--row, 0) * 60ms);
+    }
+  }
+  @keyframes cell-in {
+    from {
+      opacity: 0;
+      scale: 0.2;
+    }
   }
 
   .slider {
