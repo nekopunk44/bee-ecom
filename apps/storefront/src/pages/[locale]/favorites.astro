@@ -1,0 +1,101 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StoreHeader from '../../components/StoreHeader.astro';
+import StoreFooter from '../../components/StoreFooter.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import CombField from '../../components/CombField.astro';
+import { isLocale } from '../../i18n';
+import { catalogApi, catalogText, type Product } from '../../lib/catalog';
+import { FAVORITES_COOKIE, parseFavorites } from '../../lib/favorites';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const t = catalogText[locale];
+// Список свой у каждого браузера: страницу нельзя кешировать.
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+const slugs = parseFavorites(Astro.cookies.get(FAVORITES_COOKIE)?.value);
+const api = catalogApi();
+// Снятый с продажи товар просто пропадает из списка.
+const found = await Promise.all(
+  slugs.map((slug) =>
+    api
+      .GET('/api/v1/products/{slug}', {
+        params: { path: { slug } },
+        signal: AbortSignal.timeout(5000),
+      })
+      .then((result) => result.data)
+      .catch(() => undefined),
+  ),
+);
+const products = found.filter((product): product is Product =>
+  Boolean(product),
+);
+---
+
+<Layout
+  locale={locale}
+  title={`${t.favorites} — Bee`}
+  description={t.favorites}
+  noindex
+>
+  <StoreHeader locale={locale} />
+  <main id="main" class="container">
+    <h1 class="display rise">{t.favorites}</h1>
+    <div class="products" data-favorites-list hidden={products.length === 0}>
+      {products.map((product) => (
+        <ProductCard product={product} locale={locale} />
+      ))}
+    </div>
+    <div class="state" data-favorites-empty hidden={products.length > 0}>
+      <CombField />
+      <p>{t.favoritesEmpty}</p>
+      <a class="button honey" href={`/${locale}/catalog/`}>
+        {t.openCatalog}
+      </a>
+    </div>
+  </main>
+  <StoreFooter locale={locale} />
+</Layout>
+
+<style>
+  main {
+    padding-block: var(--space-xl) var(--space-2xl);
+  }
+  h1 {
+    margin: 0 0 var(--space-lg);
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+  }
+  .products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-lg) var(--space-md);
+  }
+  @media (min-width: 48rem) {
+    .products {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-xl) var(--space-lg);
+    }
+  }
+  @media (min-width: 75rem) {
+    .products {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .products[hidden],
+  .state[hidden] {
+    display: none;
+  }
+  .state {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-md);
+    padding: var(--space-xl);
+    border-radius: var(--radius-md);
+    background: var(--color-honey-soft);
+    font-weight: 600;
+  }
+  .state p {
+    margin: 0;
+  }
+</style>
