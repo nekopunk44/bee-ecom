@@ -729,17 +729,21 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     inset: 2px;
     clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   }
+  /* Кнопка прилипает к низу экрана на песочной подложке, чтобы список под ней не
+     просвечивал сквозь ссылку «Сбросить всё». */
   .actions {
     position: sticky;
-    bottom: var(--space-sm);
+    bottom: 0;
     z-index: 1;
     display: grid;
     justify-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-xs);
+    margin-inline: calc(var(--space-md) * -1);
+    padding: var(--space-md) var(--space-md) var(--space-sm);
+    background: linear-gradient(to bottom, transparent, var(--color-sand) 35%);
   }
   .actions .button {
     width: 100%;
-    box-shadow: var(--shadow-soft);
   }
   @media (prefers-reduced-motion: reduce) {
     .cell::before {
@@ -909,17 +913,8 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
       display: grid;
     }
     .actions {
-      bottom: 0;
       margin-inline: calc(var(--space-lg) * -1);
       padding: var(--space-md) var(--space-lg) var(--space-lg);
-      background: linear-gradient(
-        to bottom,
-        rgb(244 241 232 / 0%),
-        var(--color-sand) 40%
-      );
-    }
-    .actions .button {
-      box-shadow: none;
     }
     .actions .reset {
       display: none;
