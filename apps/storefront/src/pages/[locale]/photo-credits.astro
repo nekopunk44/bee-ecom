@@ -1,0 +1,105 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StoreHeader from '../../components/StoreHeader.astro';
+import StoreFooter from '../../components/StoreFooter.astro';
+import { isLocale } from '../../i18n';
+import { catalogApi, catalogText } from '../../lib/catalog';
+import { demoPhotos } from '../../lib/photo-credits';
+const locale = Astro.params.locale;
+if (!isLocale(locale)) return Astro.redirect('/404');
+const t = catalogText[locale];
+// Названия товаров берём из каталога; если он недоступен, подписью служит адрес товара.
+const names = new Map<string, string>();
+try {
+  const result = await catalogApi().GET('/api/v1/products', {
+    params: { query: { locale, limit: 48 } },
+    signal: AbortSignal.timeout(5000),
+  });
+  for (const product of result.data?.items ?? [])
+    names.set(product.slug, product.translations[locale].name);
+} catch {
+  // Страница остаётся полезной и без каталога.
+}
+const groups = Object.entries(demoPhotos).map(([slug, photos]) => ({
+  slug,
+  name: names.get(slug) ?? slug,
+  photos,
+}));
+---
+
+<Layout
+  locale={locale}
+  title={`${t.photoCredits} — Bee`}
+  description={t.photoCredits}
+>
+  <StoreHeader locale={locale} />
+  <main id="main" class="container">
+    <h1 class="display">{t.photoCredits}</h1>
+    <p class="intro">{t.photoCreditsIntro}</p>
+    <ul class="list">
+      {groups.map((group) => (
+        <li>
+          <a class="product" href={`/${locale}/catalog/${group.slug}/`}>
+            {group.name}
+          </a>
+          <ul>
+            {group.photos.map((photo) => (
+              <li>
+                {photo.author},{' '}
+                {photo.licenseUrl ? (
+                  <a href={photo.licenseUrl} rel="license noopener">
+                    {photo.license}
+                  </a>
+                ) : (
+                  photo.license
+                )}
+                ,{' '}
+                <a href={photo.page} rel="noopener">
+                  {t.source}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  </main>
+  <StoreFooter locale={locale} />
+</Layout>
+
+<style>
+  main {
+    padding-block: var(--space-xl) var(--space-2xl);
+  }
+  h1 {
+    margin: 0 0 var(--space-sm);
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+  }
+  .intro {
+    max-width: 44rem;
+    margin: 0 0 var(--space-lg);
+    color: var(--color-muted);
+  }
+  .list {
+    display: grid;
+    gap: var(--space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .list ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .product {
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .product:hover {
+    text-decoration: underline;
+  }
+</style>

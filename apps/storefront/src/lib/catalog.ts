@@ -46,6 +46,11 @@ export const catalogText = {
     signIn: 'Войдите, чтобы добавить товар',
     addFailed: 'Не удалось добавить. Попробуйте ещё раз.',
     cartLimit: 'В корзине уже 100 штук этого товара.',
+    photo: 'Фото',
+    photoCredits: 'Авторы фото',
+    photoCreditsIntro:
+      'Фото демонстрационных товаров взяты из Wikimedia Commons и используются по свободным лицензиям. Ниже авторы и лицензии.',
+    source: 'Источник',
     empty: 'Товары не найдены. Попробуйте изменить условия поиска.',
     unavailable:
       'Каталог временно недоступен. Попробуйте обновить страницу позже.',
@@ -101,6 +106,11 @@ export const catalogText = {
     signIn: 'Autentifică-te pentru a adăuga produsul',
     addFailed: 'Adăugarea a eșuat. Încearcă din nou.',
     cartLimit: 'Coșul conține deja 100 de bucăți din acest produs.',
+    photo: 'Foto',
+    photoCredits: 'Autorii fotografiilor',
+    photoCreditsIntro:
+      'Fotografiile produselor demonstrative sunt preluate de pe Wikimedia Commons și folosite sub licențe libere. Mai jos sunt autorii și licențele.',
+    source: 'Sursa',
     empty: 'Nu am găsit produse. Încearcă alte filtre.',
     unavailable:
       'Catalogul nu este disponibil momentan. Reîncearcă mai târziu.',
