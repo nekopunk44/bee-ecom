@@ -172,4 +172,9 @@ test('catalog filters apply at once and show as removable chips', async ({
   await expect(page).toHaveURL(/min=61/);
   await page.getByRole('link', { name: 'Сбросить всё' }).click();
   await expect(page).toHaveURL(/\/ru\/catalog\/$/);
+  // Повторное нажатие на выбранную категорию снимает выбор.
+  await page.getByText('Ульи', { exact: true }).click();
+  await expect(page).toHaveURL(/category=/);
+  await page.getByText('Ульи', { exact: true }).click();
+  await expect(page).toHaveURL(/\/ru\/catalog\/$/);
 });

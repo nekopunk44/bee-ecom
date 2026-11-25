@@ -5,6 +5,7 @@ import StoreFooter from '../../../components/StoreFooter.astro';
 import ProductCard from '../../../components/ProductCard.astro';
 import CombField from '../../../components/CombField.astro';
 import CategoryIcon from '../../../components/CategoryIcon.astro';
+import FilterIcon from '../../../components/FilterIcon.astro';
 import PriceFilter from '../../../components/PriceFilter.astro';
 import { isLocale } from '../../../i18n';
 import { catalogApi, catalogText } from '../../../lib/catalog';
@@ -150,8 +151,13 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
             {chips.length > 0 && <b>{chips.length}</b>}
           </p>
           {chips.length > 0 && (
-            <a class="reset" href={`/${locale}/catalog/`}>
-              {t.clearAll}
+            <a
+              class="reset"
+              href={`/${locale}/catalog/`}
+              aria-label={t.clearAll}
+              title={t.clearAll}
+            >
+              <FilterIcon name="reset" />
             </a>
           )}
         </div>
@@ -182,8 +188,9 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
               placeholder={t.query}
             />
           </label>
-          <label for="filters-open" class="filters-toggle">
-            {t.filters}
+          <label for="filters-open" class="filters-toggle" title={t.filters}>
+            <FilterIcon name="sliders" />
+            <span class="visually-hidden">{t.filters}</span>
             {chips.length > 0 && <b>{chips.length}</b>}
           </label>
         </div>
@@ -191,19 +198,6 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
           <fieldset class="group">
             <legend>{t.category}</legend>
             <div class="options">
-              <label class="option">
-                <input
-                  class="visually-hidden"
-                  type="radio"
-                  name="category"
-                  value=""
-                  checked={!params.get('category')}
-                />
-                <span class="cell">
-                  <CategoryIcon slug="" />
-                </span>
-                <span class="name">{t.allProducts}</span>
-              </label>
               {metadata?.categories.map((c) => {
                 const count = countOf(c.id);
                 return (
@@ -222,7 +216,12 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
                       <CategoryIcon slug={c.slug} />
                     </span>
                     <span class="name">{c.name}</span>
-                    {count !== undefined && <span class="count">{count}</span>}
+                    <span class="tail">
+                      {count !== undefined && (
+                        <span class="count">{count}</span>
+                      )}
+                      <FilterIcon name="clear" />
+                    </span>
                   </label>
                 );
               })}
@@ -247,17 +246,6 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
             <fieldset class="group">
               <legend>{t.brand}</legend>
               <div class="options">
-                <label class="option">
-                  <input
-                    class="visually-hidden"
-                    type="radio"
-                    name="brand"
-                    value=""
-                    checked={!params.get('brand')}
-                  />
-                  <span class="cell mark" aria-hidden="true" />
-                  <span class="name">{t.all}</span>
-                </label>
                 {metadata?.brands.map((b) => {
                   const count = countOf(b.id);
                   return (
@@ -274,9 +262,12 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
                       />
                       <span class="cell mark" aria-hidden="true" />
                       <span class="name">{b.name}</span>
-                      {count !== undefined && (
-                        <span class="count">{count}</span>
-                      )}
+                      <span class="tail">
+                        {count !== undefined && (
+                          <span class="count">{count}</span>
+                        )}
+                        <FilterIcon name="clear" />
+                      </span>
                     </label>
                   );
                 })}
@@ -287,6 +278,16 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
             <input type="hidden" name="sort" value={sort} />
           )}
           <div class="actions">
+            {chips.length > 0 && (
+              <a
+                class="reset"
+                href={`/${locale}/catalog/`}
+                aria-label={t.clearAll}
+                title={t.clearAll}
+              >
+                <FilterIcon name="reset" />
+              </a>
+            )}
             <button
               class="button honey"
               type="submit"
@@ -300,11 +301,6 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
             >
               {t.apply}
             </button>
-            {chips.length > 0 && (
-              <a class="reset" href={`/${locale}/catalog/`}>
-                {t.clearAll}
-              </a>
-            )}
           </div>
         </div>
       </form>
@@ -383,19 +379,86 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
   <StoreFooter locale={locale} />
 </Layout>
 <script>
-  /* Категория и бренд применяются сразу. Цена — по кнопке, но кнопка заранее
-     показывает, сколько товаров найдётся. Пустые поля не отправляются, чтобы адрес
-     выдачи оставался коротким. Без JavaScript работает кнопка «Показать товары». */
+  /* Категория и бренд применяются сразу: мёд заливает ячейку, и через 0,4 с
+     открывается выдача. Повторное нажатие на выбранную строку снимает выбор. Цена —
+     по кнопке, но кнопка заранее показывает, сколько товаров найдётся. Пустые поля
+     не отправляются, чтобы адрес выдачи оставался коротким. Без JavaScript работает
+     кнопка «Показать товары», а выбор снимается крестиком на чипе. */
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
   for (const form of document.querySelectorAll<HTMLFormElement>(
     'form[data-filters]',
   )) {
     const button = form.querySelector<HTMLButtonElement>('[data-apply]');
+    const locale = button?.dataset.locale ?? 'ru';
+    const numbers = new Intl.NumberFormat(locale);
+    let timer: number | undefined;
+    const apply = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(
+        () => form.requestSubmit(),
+        still.matches ? 0 : 400,
+      );
+    };
+
+    // Нажатие на уже выбранную строку: на pointerdown радиокнопка ещё помнит, что
+    // была выбрана. С клавиатуры выбор так не снимается, для этого есть чипы.
+    let pressed: HTMLInputElement | null = null;
+    form.addEventListener('pointerdown', (event) => {
+      const input =
+        event.target instanceof Element
+          ? event.target
+              .closest('.option')
+              ?.querySelector<HTMLInputElement>('input[type="radio"]')
+          : null;
+      pressed = input?.checked ? input : null;
+    });
+    form.addEventListener('click', (event) => {
+      const input = event.target;
+      if (
+        input instanceof HTMLInputElement &&
+        input.type === 'radio' &&
+        input === pressed
+      ) {
+        pressed = null;
+        input.checked = false;
+        apply();
+      }
+    });
+
+    // Число на кнопке докручивается до нового значения.
+    let shown: number | undefined;
+    const show = (total: number) => {
+      const rule =
+        total === 0 ? 'zero' : new Intl.PluralRules(locale).select(total);
+      const key = `count${rule.charAt(0).toUpperCase()}${rule.slice(1)}`;
+      const template = button?.dataset[key] ?? button?.dataset.countOther ?? '';
+      const from = shown ?? total;
+      shown = total;
+      if (!button) return;
+      if (still.matches || from === total) {
+        button.textContent = template.replace('{n}', numbers.format(total));
+        return;
+      }
+      const start = performance.now();
+      const step = (now: number) => {
+        const progress = Math.min(1, (now - start) / 420);
+        const value = Math.round(
+          from + (total - from) * (1 - (1 - progress) ** 3),
+        );
+        button.textContent = template.replace('{n}', numbers.format(value));
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      button.animate([{ scale: 1 }, { scale: 1.04 }, { scale: 1 }], {
+        duration: 320,
+        easing: 'ease-out',
+      });
+    };
     let pending: AbortController | undefined;
     const recount = async () => {
       if (!button) return;
       pending?.abort();
       const current = (pending = new AbortController());
-      const locale = button.dataset.locale ?? 'ru';
       const fields = new FormData(form);
       const value = (key: string) => String(fields.get(key) ?? '').trim();
       const lei = (key: string) => value(key).replace(/\D/g, '');
@@ -410,34 +473,25 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
         });
         if (!response.ok) return;
         const { total } = (await response.json()) as { total: number };
-        const rule =
-          total === 0 ? 'zero' : new Intl.PluralRules(locale).select(total);
-        const template =
-          button.dataset[
-            `count${rule.charAt(0).toUpperCase()}${rule.slice(1)}`
-          ] ??
-          button.dataset.countOther ??
-          '';
-        button.textContent = template.replace(
-          '{n}',
-          new Intl.NumberFormat(locale).format(total),
-        );
-        if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
-          button.animate([{ scale: 1 }, { scale: 1.04 }, { scale: 1 }], {
-            duration: 320,
-            easing: 'ease-out',
-          });
+        show(total);
       } catch {
         // Нет связи с API: на кнопке остаётся «Показать товары».
       }
     };
+
     form.addEventListener('change', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) return;
-      if (target.type === 'radio') form.requestSubmit();
+      if (target.type === 'radio') apply();
       else if (target.closest('[data-price]')) void recount();
     });
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', (event) => {
+      // Прокрутку панели восстановит public/view-transition.js на новой странице.
+      try {
+        sessionStorage.setItem('bee:filters-scroll', String(form.scrollTop));
+      } catch {
+        // Без sessionStorage панель откроется сверху.
+      }
       for (const field of form.querySelectorAll<HTMLInputElement>(
         'input[name="min"], input[name="max"]',
       ))
@@ -447,6 +501,11 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
       ))
         if (!field.value && (field.type !== 'radio' || field.checked))
           field.disabled = true;
+      // Ничего не выбрано: чистый адрес каталога вместо «/catalog/?».
+      if ([...new FormData(form)].length === 0) {
+        event.preventDefault();
+        location.assign(location.pathname);
+      }
     });
   }
   // Назад из выдачи: поля снова доступны, если страница вернулась из кэша.
@@ -489,11 +548,18 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     border-radius: var(--radius-lg);
     background: var(--color-sand);
   }
+  /* При переходе между выдачами панель стоит на месте, меняются только товары.
+     При входе в каталог с другой страницы её не выделяем: каталог целиком
+     раскрывается сотой. */
+  :global(html:not([data-transition='catalog'])) .filters {
+    view-transition-name: catalog-filters;
+  }
   .filters-head {
     display: none;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-sm);
+    min-height: 2.5rem;
   }
   .filters-title {
     display: flex;
@@ -519,17 +585,28 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     font-weight: 800;
     letter-spacing: 0;
   }
+  /* Сброс — круглая кнопка со стрелкой; при наведении стрелка делает оборот. */
   .reset {
-    color: var(--color-muted);
-    font-size: 0.875rem;
-    white-space: nowrap;
-    font-weight: 600;
-    text-decoration-color: transparent;
-    transition: color var(--motion-fast) var(--ease-standard);
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    transition:
+      background var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard);
+  }
+  .reset :global(.icon) {
+    transition: rotate var(--motion-slow) var(--ease-standard);
   }
   .reset:hover {
-    color: var(--color-ink);
-    text-decoration-color: currentcolor;
+    background: var(--color-ink);
+    color: var(--color-honey);
+  }
+  .reset:hover :global(.icon) {
+    rotate: -360deg;
   }
   .filters-top {
     display: flex;
@@ -573,17 +650,54 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     outline: none;
     box-shadow: 0 0 0 3px var(--color-honey);
   }
+  /* На телефоне фильтры открывает кнопка-значок: ползунки на ней разъезжаются. */
   .filters-toggle {
     display: inline-flex;
+    flex: none;
     align-items: center;
-    gap: var(--space-xs);
+    justify-content: center;
+    gap: 0.4rem;
+    min-width: 3.25rem;
     margin: 0;
-    padding-inline: 1.1rem;
+    padding-inline: 0.9rem;
     border-radius: var(--radius-pill);
     background: var(--color-paper);
     color: var(--color-ink);
-    font-weight: 700;
     cursor: pointer;
+    transition:
+      background var(--motion-normal) var(--ease-standard),
+      color var(--motion-normal) var(--ease-standard);
+  }
+  .filters-toggle :global(.knob) {
+    fill: var(--color-paper);
+    transition:
+      translate var(--motion-normal) var(--ease-standard),
+      fill var(--motion-normal) var(--ease-standard);
+  }
+  .filters-open:checked ~ .filters-top .filters-toggle {
+    background: var(--color-ink);
+    color: #ffffff;
+  }
+  .filters-open:checked ~ .filters-top .filters-toggle :global(.knob) {
+    fill: var(--color-honey);
+  }
+  .filters-open:checked
+    ~ .filters-top
+    .filters-toggle
+    :global(.knob:nth-of-type(1)) {
+    translate: 7px 0;
+  }
+  .filters-open:checked
+    ~ .filters-top
+    .filters-toggle
+    :global(.knob:nth-of-type(2)) {
+    translate: -6px 0;
+  }
+  .filters-open:checked
+    ~ .filters-top
+    .filters-toggle
+    :global(.knob:nth-of-type(3)) {
+    translate: 5px 0;
   }
   .filters-open:focus-visible ~ .filters-top .filters-toggle {
     outline: 3px solid var(--color-focus);
@@ -592,9 +706,25 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
   .filters-panel {
     display: none;
     gap: var(--space-md);
+    opacity: 0;
+    translate: 0 -0.5rem;
+    transition:
+      opacity var(--motion-normal) var(--ease-standard),
+      translate var(--motion-normal) var(--ease-standard),
+      display var(--motion-normal) allow-discrete;
   }
   .filters-open:checked ~ .filters-panel {
     display: grid;
+    opacity: 1;
+    translate: 0 0;
+  }
+  @media (max-width: 63.99rem) {
+    @starting-style {
+      .filters-open:checked ~ .filters-panel {
+        opacity: 0;
+        translate: 0 -0.5rem;
+      }
+    }
   }
   .group {
     display: grid;
@@ -630,17 +760,12 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     line-height: 1.25;
     cursor: pointer;
     transition:
-      background var(--motion-fast) var(--ease-standard),
-      color var(--motion-fast) var(--ease-standard);
+      background var(--motion-normal) var(--ease-standard),
+      color var(--motion-normal) var(--ease-standard);
   }
   .option .name {
     flex: 1;
     min-width: 0;
-  }
-  .option .count {
-    color: var(--color-muted);
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
   }
   .option:hover {
     background: var(--color-paper);
@@ -648,17 +773,6 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
   .option:has(input:checked) {
     background: var(--color-ink);
     color: #ffffff;
-  }
-  .option:has(input:checked) .count {
-    color: var(--color-honey);
-  }
-  /* «Все товары» и «Все» — отсутствие фильтра, а не выбор: без графитовой строки. */
-  .option:has(input[value='']:checked) {
-    background: none;
-    color: var(--color-ink);
-  }
-  .option:has(input[value='']:checked):hover {
-    background: var(--color-paper);
   }
   .option[data-empty] {
     color: var(--color-muted);
@@ -669,6 +783,58 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
   .option:has(input:focus-visible) {
     outline: 3px solid var(--color-focus);
     outline-offset: 2px;
+  }
+  /* Справа число товаров. У выбранной строки на его место встаёт крестик: второе
+     нажатие снимает выбор. С мышью крестик появляется при наведении. */
+  .tail {
+    display: grid;
+    place-items: center;
+    min-width: 1.25rem;
+  }
+  .tail > :global(*) {
+    grid-area: 1 / 1;
+    transition:
+      opacity var(--motion-normal) var(--ease-standard),
+      rotate var(--motion-normal) var(--ease-standard),
+      scale var(--motion-normal) var(--ease-standard);
+  }
+  .count {
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .tail :global(.icon-clear) {
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-honey);
+    opacity: 0;
+    rotate: -90deg;
+    scale: 0.5;
+  }
+  .option:has(input:checked) .count {
+    color: var(--color-honey);
+  }
+  @media (hover: none) {
+    .option:has(input:checked) .count {
+      opacity: 0;
+      scale: 0.5;
+    }
+    .option:has(input:checked) .tail :global(.icon-clear) {
+      opacity: 1;
+      rotate: 0deg;
+      scale: 1;
+    }
+  }
+  @media (hover: hover) {
+    .option:has(input:checked):hover .count {
+      opacity: 0;
+      scale: 0.5;
+    }
+    .option:has(input:checked):hover .tail :global(.icon-clear) {
+      opacity: 1;
+      rotate: 0deg;
+      scale: 1;
+    }
   }
   /* Ячейка: шестигранник со сменным уровнем мёда. Иконка категории рисует контур и
      рисунок поверх, заливку даёт ячейка. */
@@ -683,6 +849,7 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     flex: none;
     width: 1.9rem;
     height: 2.15rem;
+    transition: scale var(--motion-normal) var(--ease-standard);
   }
   .cell::before {
     position: absolute;
@@ -706,8 +873,13 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
   .option:hover .cell::before {
     --level: 40%;
   }
+  /* Выбор: мёд заливает ячейку за 0,4 с, и только потом открывается выдача. */
   .option:has(input:checked) .cell::before {
     --level: 100%;
+    transition-duration: 400ms;
+  }
+  .option:active .cell {
+    scale: 0.9;
   }
   .cell :global(svg) {
     position: relative;
@@ -729,24 +901,36 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     inset: 2px;
     clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   }
-  /* Кнопка прилипает к низу экрана на песочной подложке, чтобы список под ней не
-     просвечивал сквозь ссылку «Сбросить всё». */
+  /* Кнопка прилипает к низу экрана на песочной подложке; сброс — значок слева. */
   .actions {
     position: sticky;
     bottom: 0;
     z-index: 1;
     display: grid;
-    justify-items: center;
-    gap: var(--space-xs);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-sm);
     margin-inline: calc(var(--space-md) * -1);
     padding: var(--space-md) var(--space-md) var(--space-sm);
     background: linear-gradient(to bottom, transparent, var(--color-sand) 35%);
+  }
+  .actions:has(.reset) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .actions .reset {
+    width: 3rem;
+    height: 3rem;
   }
   .actions .button {
     width: 100%;
   }
   @media (prefers-reduced-motion: reduce) {
-    .cell::before {
+    .cell,
+    .cell::before,
+    .tail > :global(*),
+    .filters-panel,
+    .filters-toggle :global(.knob),
+    .reset :global(.icon) {
       transition: none;
     }
   }
@@ -911,8 +1095,12 @@ const countOf = (id: string) => (facets ? (counts.get(id) ?? 0) : undefined);
     .filters-panel,
     .filters-open:checked ~ .filters-panel {
       display: grid;
+      opacity: 1;
+      translate: none;
     }
-    .actions {
+    .actions,
+    .actions:has(.reset) {
+      grid-template-columns: minmax(0, 1fr);
       margin-inline: calc(var(--space-lg) * -1);
       padding: var(--space-md) var(--space-lg) var(--space-lg);
     }
