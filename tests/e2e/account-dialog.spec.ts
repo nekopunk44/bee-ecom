@@ -134,3 +134,35 @@ test('the window flies back into the icon on Escape, the cross and the backdrop'
   await page.mouse.click(4, 4);
   await expect(open).toHaveCount(0);
 });
+
+test('the page under the open window stays put and fields focus softly', async ({
+  page,
+}) => {
+  await api(page, false);
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.goto(catalog);
+  await ready(page);
+  const root = page.locator('html');
+  await page.getByRole('banner').getByRole('link', { name: 'Аккаунт' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Аккаунт' });
+  await expect(dialog).toBeVisible();
+  await expect(root).toHaveCSS('overflow', 'hidden');
+  await page.mouse.move(20, 500);
+  await page.mouse.wheel(0, 800);
+  await page.evaluate(
+    () =>
+      new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      ),
+  );
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  // Поле в фокусе без толстой обводки: только рамка и мягкий ореол.
+  const email = dialog.getByLabel('Электронная почта');
+  await email.click();
+  await expect(email).toHaveCSS('outline-style', 'none');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await expect(root).not.toHaveCSS('overflow', 'hidden');
+  await page.mouse.wheel(0, 800);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+});

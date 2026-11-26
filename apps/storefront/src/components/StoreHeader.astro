@@ -247,10 +247,13 @@ const text = {
     border-radius: var(--radius-pill);
     background: var(--header-raised);
     color: var(--header-muted);
+    transition: box-shadow var(--motion-normal) var(--ease-standard);
   }
+  /* Капсула поиска в фокусе — как поле ввода: тонкая рамка и мягкий медовый ореол. */
   .search:focus-within {
-    outline: 3px solid var(--color-focus);
-    outline-offset: 2px;
+    box-shadow:
+      inset 0 0 0 2px var(--header-text),
+      0 0 0 4px rgb(245 183 0 / 24%);
   }
   .search input {
     flex: 1;
@@ -259,6 +262,8 @@ const text = {
     border-radius: 0;
     background: transparent;
     color: var(--header-text);
+    /* Фокус рисует вся капсула, само поле без рамки и ореола. */
+    box-shadow: none;
     outline: none;
   }
   .search input::placeholder {

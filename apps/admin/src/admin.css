@@ -172,11 +172,6 @@ label.field {
 .field textarea {
   min-height: 6rem;
 }
-.field :is(input, select, textarea):focus {
-  border-color: var(--color-ink);
-  outline: 3px solid var(--color-honey-soft);
-  outline-offset: 0;
-}
 .field .hint {
   color: var(--color-muted);
   font-weight: 400;
@@ -214,11 +209,6 @@ label.field {
   border-radius: var(--radius-pill);
   background: var(--color-paper);
   font-size: 0.9375rem;
-}
-.search-box input:focus {
-  border-color: var(--color-ink);
-  outline: 3px solid var(--color-honey-soft);
-  outline-offset: 0;
 }
 
 /* Флажки-чипы: выбранный — графитовый. */

@@ -53,11 +53,22 @@ textarea {
   color: var(--color-ink);
   min-width: 0;
   max-width: 100%;
+  box-shadow: 0 0 0 0 rgb(245 183 0 / 0%);
+  transition:
+    border-color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-normal) var(--ease-standard);
 }
-input:focus,
-select:focus,
-textarea:focus {
+/* Поле для ввода в фокусе: рамка плавно темнеет и вокруг проступает мягкий медовый
+   ореол. Толстая обводка :focus-visible остаётся кнопкам и ссылкам; флажки,
+   переключатели и ползунки рисуют фокус сами. */
+:is(
+  input:not([type='checkbox'], [type='radio'], [type='range']),
+  select,
+  textarea
+):focus {
   border-color: var(--color-ink);
+  box-shadow: 0 0 0 4px rgb(245 183 0 / 24%);
+  outline: none;
 }
 textarea {
   width: 100%;
