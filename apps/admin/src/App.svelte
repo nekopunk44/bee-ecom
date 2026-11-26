@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api, type Session } from './lib/catalog';
   import Icon from './components/Icon.svelte';
   import LoginForm from './components/LoginForm.svelte';
@@ -16,6 +16,11 @@
   let checked = $state(false);
   let error = $state('');
   let section = $state<Section>('products');
+  // Экран входа (или вход поверх раздела) и его уход после удачного входа.
+  let screen = $state<HTMLElement>();
+  let leaving = $state(false);
+  // Админка открылась сразу после входа: панель и раздел въезжают.
+  let entering = $state(false);
   let newOrders = $state(0);
   const can = (permission: string) =>
     session?.permissions.includes(permission) ?? false;
@@ -43,12 +48,46 @@
       // Счётчик в меню необязателен.
     }
   }
-  async function current() {
+  /** Карточка входа сворачивается в соту, экран гаснет, и только потом открывается админка. */
+  async function leave() {
+    // С экрана входа сота улетает в левый верхний угол, где сейчас появится знак
+    // боковой панели; поверх раздела — просто сворачивается на месте.
+    const card = screen?.querySelector('form')?.getBoundingClientRect();
+    if (card && !session) {
+      screen?.style.setProperty(
+        '--cell-x',
+        `${Math.round(40 - (card.left + card.width / 2))}px`,
+      );
+      screen?.style.setProperty(
+        '--cell-y',
+        `${Math.round(40 - (card.top + card.height / 2))}px`,
+      );
+    }
+    leaving = true;
+    await tick();
+    const playing = (screen?.getAnimations({ subtree: true }) ?? [])
+      .filter(
+        (animation) =>
+          animation.effect?.getComputedTiming().endTime !== Infinity,
+      )
+      .map((animation) => animation.finished);
+    await Promise.race([
+      Promise.allSettled(playing),
+      new Promise((resolve) => setTimeout(resolve, 900)),
+    ]);
+    leaving = false;
+  }
+  /** signedIn — человек только что вошёл через форму, а не открыл админку с живой сессией. */
+  async function current(signedIn = false) {
     try {
       const result = await api.GET('/api/v1/auth/session', {
         signal: AbortSignal.timeout(7000),
       });
       if (result.data) {
+        if (signedIn) {
+          await leave();
+          entering = !session;
+        }
         session = result.data;
         needsLogin = false;
         // Без доступа к каталогу открывается первый раздел, который сотруднику доступен.
@@ -82,7 +121,12 @@
 
 <a class="skip-link" href="#main">Перейти к содержимому</a>
 {#if !session}
-  <main id="main" class="welcome">
+  <main
+    id="main"
+    class="welcome"
+    bind:this={screen}
+    data-leaving={leaving ? '' : undefined}
+  >
     <svg class="comb" aria-hidden="true">
       <defs>
         <pattern
@@ -113,14 +157,15 @@
         <LoginForm
           title="Вход для сотрудников"
           {error}
-          onSignedIn={() => current()}
+          {leaving}
+          onSignedIn={() => current(true)}
         />
       {/if}
       <ConnectionCheck tone="dark" />
     </div>
   </main>
 {:else}
-  <div class="shell">
+  <div class="shell" data-entering={entering ? '' : undefined}>
     <aside class="sidebar">
       <p class="logo">
         <svg width="24" height="27" viewBox="0 0 30 34" aria-hidden="true"
@@ -190,8 +235,14 @@
       role="dialog"
       aria-modal="true"
       aria-label="Войти снова"
+      bind:this={screen}
+      data-leaving={leaving ? '' : undefined}
     >
-      <LoginForm title="Войти снова" onSignedIn={() => current()} />
+      <LoginForm
+        title="Войти снова"
+        {leaving}
+        onSignedIn={() => current(true)}
+      />
     </div>
   {/if}
 {/if}
@@ -235,6 +286,22 @@
     height: 100%;
     color: var(--color-night-line);
     opacity: 0.6;
+    animation: comb-in 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  /* Соты фона проступают и чуть оседают, знак докручивается на место. */
+  @keyframes comb-in {
+    from {
+      opacity: 0;
+      scale: 1.08;
+    }
+  }
+  .welcome .logo svg {
+    animation: cell-mark-in 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  /* После входа экран гаснет, пока карточка сворачивается в соту. */
+  .welcome[data-leaving],
+  .relogin[data-leaving] {
+    animation: cell-fade-out 320ms cubic-bezier(0.4, 0, 0.6, 1) 140ms both;
   }
   .welcome-inner {
     position: relative;
@@ -370,6 +437,19 @@
     place-items: center;
     padding: var(--space-md);
     background: rgb(23 21 15 / 55%);
+    animation: cell-fade-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  /* Сразу после входа панель выезжает слева, а раздел поднимается следом. */
+  .shell[data-entering] .sidebar {
+    animation: sidebar-in 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .shell[data-entering] .content {
+    animation: cell-content-in 560ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  }
+  @keyframes sidebar-in {
+    from {
+      translate: -100% 0;
+    }
   }
 
   /* На узком экране панель — полоса сверху, разделы прокручиваются вбок. */
