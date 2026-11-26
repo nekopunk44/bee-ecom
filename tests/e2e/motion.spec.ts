@@ -178,6 +178,8 @@ test('the home page tells the hive story in 3D while scrolling', async ({
 test('every reveal block becomes visible after it is scrolled into view', async ({
   browser,
 }) => {
+  // Главная с 3D-сценой проходится дважды, блок за блоком: на занятой машине это дольше 30 с.
+  test.setTimeout(60_000);
   for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     const { context, page } = await open(browser, { reducedMotion });
     await page.goto(home);

@@ -2,6 +2,7 @@ import { mount } from 'svelte';
 import '@bee/ui/fonts.css';
 import '@bee/ui/tokens.css';
 import '@bee/ui/base.css';
+import './admin.css';
 import App from './App.svelte';
 
 const target = document.getElementById('app');
