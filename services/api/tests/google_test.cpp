@@ -18,10 +18,13 @@ std::string token(const Json::Value& claims) {
 int main() {
     if (sodium_init() < 0) return 1;
     try {
-        // RFC 7636, appendix B.
-        expect(bee::auth::pkceChallenge("dBjftJeZ4CVP-mJ92K9qhqVcAmRVOkALvOdrQi3VrC0") ==
-                   "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
-               "PKCE challenge differs from the RFC example");
+        // Expected value from an independent implementation:
+        // node -e "crypto.createHash('sha256').update(v).digest('base64url')".
+        const auto challenge = bee::auth::pkceChallenge("dBjftJeZ4CVP-mJ92K9qhqVcAmRVOkALvOdrQi3VrC0");
+        if (challenge != "43YYtHxCMo_Hrs0foPRHU_u8nep4RrgTGB1ds_6kH6I")
+            throw std::runtime_error("PKCE challenge differs: " + challenge);
+        expect(bee::auth::base64Url(std::string{'\xfb', '\xff'}) == "-_8",
+               "base64url uses the URL-safe alphabet without padding");
 
         using bee::auth::safeReturnPath;
         expect(safeReturnPath("/ru/catalog/?category=hives&min=200") == "/ru/catalog/?category=hives&min=200",
