@@ -88,6 +88,55 @@
   let checked = false;
   // Куда вернуться после Google: эта же страница, без пометки о прошлом входе.
   let back = $state(`/${locale}/`);
+  // Значок, из которого окно вылетает сотой и в который возвращается.
+  let origin: Element | null = null;
+  // Раскрытие или сворачивание окна: от него зависят анимации (data-phase).
+  let phase = $state<'opening' | 'closing' | null>(null);
+  // Каждое открытие отменяет закрытие, которое ещё доигрывает анимацию.
+  let run = 0;
+
+  /** Смещение от центра окна до значка: окно стоит по центру экрана. */
+  function aim() {
+    const box = origin?.getBoundingClientRect();
+    const seen =
+      box && box.width > 0 && box.bottom > 0 && box.top < innerHeight;
+    const x = seen
+      ? box.left + box.width / 2 - document.documentElement.clientWidth / 2
+      : 0;
+    const y = seen ? box.top + box.height / 2 - innerHeight / 2 : 0;
+    // Через CSSOM, а не атрибутом style: встроенные стили запрещает CSP.
+    dialog?.style.setProperty('--cell-x', `${Math.round(x)}px`);
+    dialog?.style.setProperty('--cell-y', `${Math.round(y)}px`);
+  }
+  /** Закрытие: содержимое гаснет, карточка сворачивается в соту и улетает в значок. */
+  async function dismiss() {
+    if (!dialog?.open || phase === 'closing') return;
+    const current = ++run;
+    aim();
+    phase = 'closing';
+    await tick();
+    const playing = dialog
+      .getAnimations({ subtree: true })
+      .filter(
+        (animation) =>
+          animation.effect?.getComputedTiming().endTime !== Infinity,
+      )
+      .map((animation) => animation.finished);
+    await Promise.race([
+      Promise.allSettled(playing),
+      new Promise((resolve) => setTimeout(resolve, 900)),
+    ]);
+    if (current === run) dialog.close();
+  }
+  /** Окно закрылось (в том числе вторым Escape без анимации): значок ловит соту. */
+  function landed() {
+    phase = null;
+    if (!(origin instanceof HTMLElement)) return;
+    // Чтение размера между снятием и возвратом класса перезапускает анимацию.
+    origin.classList.remove('bump');
+    void origin.offsetWidth;
+    origin.classList.add('bump');
+  }
 
   function mark() {
     for (const trigger of document.querySelectorAll('[data-account-trigger]'))
@@ -111,16 +160,31 @@
       // Нет связи: окно всё равно покажет формы, ошибка будет при отправке.
     }
   }
-  /** outcome — итог входа через Google, если человек только что вернулся оттуда. */
-  export async function open(outcome?: string | null) {
+  /**
+   * outcome — итог входа через Google, если человек только что вернулся оттуда;
+   * from — нажатый значок (без него окно вылетает из значка в шапке).
+   */
+  export async function open(outcome?: string | null, from?: Element | null) {
     error = '';
     justSignedIn = false;
+    origin = from ?? document.querySelector('header [data-account-trigger]');
     const params = new URLSearchParams(location.search);
     params.delete('signin');
     const query = params.toString();
     back = location.pathname + (query ? `?${query}` : '');
     await tick();
-    if (!dialog?.open) dialog?.showModal();
+    const current = ++run;
+    if (dialog) {
+      aim();
+      phase = 'opening';
+      await tick();
+      if (!dialog.open) dialog.showModal();
+      // Пока окно раскрывается, содержимое встаёт по очереди; то, что появится
+      // позже (ошибка, меню после входа), показывается сразу, без очереди.
+      setTimeout(() => {
+        if (current === run && phase === 'opening') phase = null;
+      }, 1200);
+    }
     await check();
     if (outcome === 'google') justSignedIn = Boolean(session);
     else if (outcome)
@@ -166,7 +230,7 @@
       document.dispatchEvent(new CustomEvent('bee:session'));
       // Остаёмся на странице: окно само закрывается, когда человек увидел, что вошёл.
       setTimeout(() => {
-        if (justSignedIn) dialog?.close();
+        if (justSignedIn) void dismiss();
       }, 1400);
     } catch {
       error = copy.failed;
@@ -200,11 +264,18 @@
 <dialog
   bind:this={dialog}
   class="account-dialog"
+  data-phase={phase}
   aria-labelledby="account-dialog-title"
   onclick={(event) => {
     // Нажатие по затемнению вокруг окна закрывает его.
-    if (event.target === dialog) dialog?.close();
+    if (event.target === dialog) void dismiss();
   }}
+  oncancel={(event) => {
+    // Escape закрывает с той же анимацией, что и крестик.
+    event.preventDefault();
+    void dismiss();
+  }}
+  onclose={landed}
 >
   <div class="card">
     <header>
@@ -223,7 +294,7 @@
         class="close"
         type="button"
         aria-label={copy.close}
-        onclick={() => dialog?.close()}
+        onclick={() => void dismiss()}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"
           ><path d="M6 6l12 12M18 6 6 18"></path></svg
@@ -363,27 +434,66 @@
     box-shadow: 0 2rem 5rem rgb(23 21 15 / 30%);
     overflow: auto;
   }
+  /* Затемнение с медовыми сотами: проступает и чуть оседает, пока окно летит. */
   .account-dialog::backdrop {
-    background: rgb(23 21 15 / 55%);
-    backdrop-filter: blur(3px);
-  }
-  .account-dialog[open] {
-    animation: dialog-in 320ms var(--ease-out);
+    background: rgb(23 21 15 / 60%)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33M0 97V81l28-17 28 17v16' fill='none' stroke='%23f5b700' stroke-opacity='.13'/%3E%3C/svg%3E")
+      center / 56px 97px;
+    backdrop-filter: blur(4px);
   }
   .account-dialog[open]::backdrop {
-    animation: fade-in 320ms var(--ease-out);
+    animation: backdrop-in 520ms var(--ease-out) both;
   }
-  @keyframes dialog-in {
+  .account-dialog[open][data-phase='closing']::backdrop {
+    animation: cell-fade-out 440ms cubic-bezier(0.4, 0, 0.6, 1) both;
+  }
+  @keyframes backdrop-in {
     from {
       opacity: 0;
-      translate: 0 1rem;
-      scale: 0.97;
+      backdrop-filter: blur(0);
+      background-size: 84px 145.5px;
     }
   }
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
+  /* Окно вылетает сотой из нажатого значка (--cell-x и --cell-y ставит aim()),
+     раскрывается в карточку, а при закрытии сворачивается и улетает обратно
+     (кадры в @bee/ui/cell.css). */
+  .account-dialog[open] {
+    animation: cell-open 640ms both;
+  }
+  .account-dialog[open][data-phase='closing'] {
+    animation: cell-close 440ms both;
+  }
+  .account-dialog[data-phase='opening'] .card > * {
+    animation: cell-content-in 460ms var(--ease-out) both;
+    animation-delay: calc(330ms + var(--n, 0) * 50ms);
+  }
+  .card > :nth-child(2) {
+    --n: 1;
+  }
+  .card > :nth-child(3) {
+    --n: 2;
+  }
+  .card > :nth-child(4) {
+    --n: 3;
+  }
+  .card > :nth-child(5) {
+    --n: 4;
+  }
+  .card > :nth-child(6) {
+    --n: 5;
+  }
+  .card > :nth-child(7) {
+    --n: 6;
+  }
+  .account-dialog[data-phase='opening'] .mark {
+    animation: cell-mark-in 700ms var(--ease-spring) 300ms both;
+  }
+  /* Ошибка, которая появилась позже, коротко вздрагивает (shake из motion.css). */
+  .card > .error {
+    animation: shake 360ms var(--ease-standard);
+  }
+  .account-dialog[data-phase='closing'] .card > * {
+    animation: cell-content-out 110ms ease-in both;
   }
   .card {
     display: grid;
@@ -634,11 +744,10 @@
     font-weight: 600;
     text-decoration: underline;
   }
+  /* Остальные анимации гасит общее правило base.css; затемнение под него не попадает. */
   @media (prefers-reduced-motion: reduce) {
-    .account-dialog[open],
     .account-dialog[open]::backdrop,
-    .mark path,
-    .fresh .avatar {
+    .account-dialog[open][data-phase='closing']::backdrop {
       animation: none;
     }
   }
