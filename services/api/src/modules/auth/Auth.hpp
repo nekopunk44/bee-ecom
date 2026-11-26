@@ -1,5 +1,6 @@
 #pragma once
 #include <drogon/drogon.h>
+#include <optional>
 #include "platform/Executor.hpp"
 #include "AuthRepository.hpp"
 
@@ -16,6 +17,8 @@ public:
     Login login(const std::string& email, const std::string& password, const std::string& address);
     Login registerCustomer(const std::string& email, const std::string& password,
                            const std::string& address);
+    /** Session token for a Google account, or nothing when it may not sign in here. */
+    std::optional<std::string> signInWithGoogle(const std::string& subject, const std::string& email);
     Principal require(const drogon::HttpRequestPtr& request, const std::string& permission = "") const;
     void requireOrigin(const drogon::HttpRequestPtr& request) const;
     void requireAuthOrigin(const drogon::HttpRequestPtr& request) const;
