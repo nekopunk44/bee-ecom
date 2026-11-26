@@ -1,32 +1,9 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import AccountWorkspace from '../../components/AccountWorkspace.svelte';
-import StoreHeader from '../../components/StoreHeader.astro';
-import StoreFooter from '../../components/StoreFooter.astro';
-import PageTop from '../../components/PageTop.astro';
 import { isLocale } from '../../i18n';
 
+// Отдельной страницы аккаунта нет: вход и меню покупателя — окно поверх страницы.
+// Старый адрес и ссылка без JavaScript ведут на главную, где окно сразу открывается.
 const locale = Astro.params.locale;
 if (!isLocale(locale)) return Astro.redirect('/404');
-const text = {
-  ru: {
-    title: 'Аккаунт покупателя',
-    note: 'Войдите, чтобы собирать корзину, оформлять заказы и следить за ними.',
-  },
-  ro: {
-    title: 'Cont client',
-    note: 'Autentifică-te ca să adaugi produse în coș, să plasezi comenzi și să le urmărești.',
-  },
-}[locale];
+return Astro.redirect(`/${locale}/?signin=open`);
 ---
-
-<Layout locale={locale} title={text.title} description={text.title} noindex>
-  <StoreHeader locale={locale} tone="night" />
-  <main id="main">
-    <PageTop title={text.title} text={text.note} />
-    <div class="container">
-      <AccountWorkspace client:load locale={locale} />
-    </div>
-  </main>
-  <StoreFooter locale={locale} />
-</Layout>

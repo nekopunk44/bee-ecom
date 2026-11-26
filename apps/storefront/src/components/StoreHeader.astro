@@ -153,8 +153,9 @@ const text = {
 </header>
 
 <script>
-  // Значок аккаунта открывает окно поверх страницы. Само окно (Svelte) загружается
-  // при первом нажатии, поэтому на страницах без нужды в нём нет ни байта.
+  // Значок аккаунта открывает окно поверх страницы; отдельной страницы аккаунта нет.
+  // Само окно (Svelte) загружается при первом нажатии, поэтому на страницах без нужды
+  // в нём нет ни байта.
   const locale = document.documentElement.lang === 'ro' ? 'ro' : 'ru';
   const account = (outcome?: string | null, from?: Element | null) =>
     import('../lib/account-dialog').then(({ openAccount }) =>
@@ -170,7 +171,13 @@ const text = {
     event.preventDefault();
     void account(null, trigger);
   });
-  // Вернулись от Google: показываем итог и убираем пометку из адреса.
+  // Войти просят и другие части страницы: корзина, оформление, кнопка «В корзину»
+  // (lib/sign-in).
+  document.addEventListener('bee:sign-in', (event) => {
+    void account(null, (event as CustomEvent<Element | null>).detail);
+  });
+  // Вернулись от Google (или со старого адреса /account/): показываем окно с итогом
+  // и убираем пометку из адреса.
   const outcome = new URLSearchParams(location.search).get('signin');
   if (outcome) {
     const url = new URL(location.href);
@@ -178,7 +185,7 @@ const text = {
     history.replaceState(history.state, '', url);
     void account(outcome);
   }
-  // Обработчик на месте: до этого значок просто вёл на страницу аккаунта.
+  // Обработчик на месте: до этого значок просто вёл по ссылке, на /account/.
   document.documentElement.toggleAttribute('data-account-dialog', true);
 
   // Число на сердечке в шапке меняется сразу, как только товар отмечен в карточке.

@@ -145,6 +145,7 @@
   function landed() {
     phase = null;
     lock(false);
+    document.dispatchEvent(new CustomEvent('bee:account-closed'));
     if (!(origin instanceof HTMLElement)) return;
     // Чтение размера между снятием и возвратом класса перезапускает анимацию.
     origin.classList.remove('bump');
@@ -204,7 +205,8 @@
     }
     await check();
     if (outcome === 'google') justSignedIn = Boolean(session);
-    else if (outcome)
+    // open — просто открыть окно, например со старого адреса /account/.
+    else if (outcome && outcome !== 'open')
       error = outcome === 'google-off' ? copy.googleOff : copy.googleFailed;
     await tick();
     dialog?.querySelector<HTMLInputElement>('input[type="email"]')?.focus();
@@ -244,7 +246,7 @@
       session = { email: result.data.email, permissions: [] };
       justSignedIn = true;
       mark();
-      document.dispatchEvent(new CustomEvent('bee:session'));
+      document.dispatchEvent(new CustomEvent('bee:session', { detail: true }));
       // Остаёмся на странице: окно само закрывается, когда человек увидел, что вошёл.
       setTimeout(() => {
         if (justSignedIn) void dismiss();
@@ -269,7 +271,7 @@
       session = null;
       justSignedIn = false;
       mark();
-      document.dispatchEvent(new CustomEvent('bee:session'));
+      document.dispatchEvent(new CustomEvent('bee:session', { detail: false }));
     } catch {
       error = copy.failed;
     } finally {

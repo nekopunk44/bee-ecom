@@ -6,6 +6,7 @@
   import { Tween, prefersReducedMotion } from 'svelte/motion';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
+  import { onSession, signIn } from '../lib/sign-in';
   import { formatMoney as money } from '../lib/money';
   import CombField from './CombField.svelte';
   let { locale }: { locale: Locale } = $props();
@@ -20,7 +21,7 @@
       sku: 'артикул',
       loading: 'Загружаем корзину…',
       signIn: 'Войдите в аккаунт, чтобы посмотреть свою корзину.',
-      account: 'Перейти к аккаунту',
+      account: 'Войти',
       empty: 'Корзина пока пуста.',
       unavailable: 'Нет в наличии',
       available: 'Доступно',
@@ -43,7 +44,7 @@
       sku: 'cod',
       loading: 'Se încarcă coșul…',
       signIn: 'Autentifică-te pentru a vedea coșul tău.',
-      account: 'Deschide contul',
+      account: 'Intră în cont',
       empty: 'Coșul este gol.',
       unavailable: 'Indisponibil',
       available: 'Disponibil',
@@ -149,6 +150,8 @@
 
   onMount(() => {
     void load();
+    // Вошёл или вышел в окне аккаунта — данные перечитываются без перезагрузки.
+    return onSession(() => void load());
   });
 </script>
 
@@ -168,7 +171,12 @@
   {:else if authRequired}
     <div class="state">
       <p>{copy.signIn}</p>
-      <a class="button" href={`/${locale}/account/`}>{copy.account}</a>
+      <button
+        class="button"
+        type="button"
+        onclick={(event) => void signIn(event.currentTarget)}
+        >{copy.account}</button
+      >
     </div>
   {:else if error}
     <div class="state">

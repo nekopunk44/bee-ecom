@@ -2,6 +2,7 @@ import type { Locale } from '../i18n';
 import { addOne } from './cart';
 import { toggleFavorite } from './favorites';
 import { flyToCart, reducedMotion } from './motion';
+import { signIn } from './sign-in';
 
 /* Действия в карточке товара: избранное, «в корзину» с выбором варианта и листание
    фото. Карточки рисует сервер, здесь только обработчики; без JavaScript кнопки
@@ -83,17 +84,15 @@ async function add(button: HTMLButtonElement, variantId: string) {
     return;
   }
   delete trigger.dataset.state;
-  if (!note) return;
+  // Гость: поверх страницы открывается вход, после него товар добавляется сам.
   if (result === 'login') {
-    const link = document.createElement('a');
-    link.href = trigger.dataset.account ?? '/';
-    link.textContent = trigger.dataset.signIn ?? '';
-    note.append(link);
-  } else {
+    if (await signIn(trigger)) await add(button, variantId);
+    return;
+  }
+  if (note)
     note.textContent =
       (result === 'limit' ? trigger.dataset.limit : trigger.dataset.failed) ??
       '';
-  }
 }
 
 function toCart(button: HTMLButtonElement) {

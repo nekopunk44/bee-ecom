@@ -5,6 +5,7 @@
   import { Tween, prefersReducedMotion } from 'svelte/motion';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
+  import { onSession, signIn } from '../lib/sign-in';
   import { formatMoney } from '../lib/money';
   import { deliveryLabels, type DeliveryMethod } from '../lib/orders';
   let { locale }: { locale: Locale } = $props();
@@ -23,7 +24,7 @@
     ru: {
       loading: 'Готовим оформление заказа…',
       signIn: 'Войдите в аккаунт, чтобы оформить заказ.',
-      account: 'Перейти к аккаунту',
+      account: 'Войти',
       empty: 'В корзине нет товаров — оформлять пока нечего.',
       browse: 'Перейти в каталог',
       failed: 'Не удалось загрузить данные заказа. Попробуйте ещё раз.',
@@ -86,7 +87,7 @@
     ro: {
       loading: 'Pregătim plasarea comenzii…',
       signIn: 'Autentifică-te pentru a plasa comanda.',
-      account: 'Deschide contul',
+      account: 'Intră în cont',
       empty: 'Coșul este gol — deocamdată nu ai ce comanda.',
       browse: 'Deschide catalogul',
       failed: 'Datele comenzii nu au putut fi încărcate. Încearcă din nou.',
@@ -323,6 +324,8 @@
 
   onMount(() => {
     void load();
+    // Вошёл или вышел в окне аккаунта — данные перечитываются без перезагрузки.
+    return onSession(() => void load());
   });
 </script>
 
@@ -333,7 +336,12 @@
   {:else if authRequired}
     <div class="state">
       <p>{copy.signIn}</p>
-      <a class="button" href={`/${locale}/account/`}>{copy.account}</a>
+      <button
+        class="button"
+        type="button"
+        onclick={(event) => void signIn(event.currentTarget)}
+        >{copy.account}</button
+      >
     </div>
   {:else if loadError && !checkout}
     <div class="state">

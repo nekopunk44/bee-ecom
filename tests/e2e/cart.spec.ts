@@ -93,11 +93,15 @@ test('без входа корзина просит войти в аккаунт
   await page.goto(`http://127.0.0.1:4321/ru/catalog/${product.slug}/`);
   await hydrated(page);
   await page.getByRole('button', { name: 'В корзину' }).click();
-  await expect(page.getByRole('alert')).toHaveText(
-    'Войдите, чтобы добавить товар',
-  );
+  // Гостю открывается окно входа, а не другая страница.
+  const dialog = page.getByRole('dialog', { name: 'Аккаунт' });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
   await page.goto('http://127.0.0.1:4321/ru/cart/');
   await expect(
     page.getByText('Войдите в аккаунт, чтобы посмотреть свою корзину.'),
   ).toBeVisible();
+  await page.locator('main').getByRole('button', { name: 'Войти' }).click();
+  await expect(dialog).toBeVisible();
 });

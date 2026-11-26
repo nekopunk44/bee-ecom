@@ -67,25 +67,56 @@ test('the card adds a single variant at once and asks which one when there are s
   expect(posted[1]).toEqual({ variantId: hive.variants[1]!.id, quantity: 1 });
 });
 
-test('a guest is sent to sign in when adding from the card', async ({
+test('a guest signs in over the catalog and the product lands in the cart', async ({
   page,
 }) => {
+  let signed = false;
+  let added: unknown;
+  const guest = {
+    status: 401,
+    json: { error: { code: 'AUTH_REQUIRED', message: 'No', requestId: 't' } },
+  };
+  await page.route('**/api/v1/auth/session', (route) =>
+    signed
+      ? route.fulfill({
+          json: { email: 'buyer@example.test', permissions: [] },
+        })
+      : route.fulfill(guest),
+  );
+  await page.route('**/api/v1/auth/providers', (route) =>
+    route.fulfill({ json: { google: false } }),
+  );
+  await page.route('**/api/v1/auth/login', (route) => {
+    signed = true;
+    return route.fulfill({ json: { email: 'buyer@example.test' } });
+  });
   await page.route(
     (url) => url.pathname === '/api/v1/cart',
     (route) =>
-      route.fulfill({
-        status: 401,
-        json: {
-          error: { code: 'UNAUTHORIZED', message: 'No', requestId: 'test' },
-        },
-      }),
+      signed ? route.fulfill({ json: { items: [] } }) : route.fulfill(guest),
+  );
+  await page.route(
+    (url) => url.pathname === '/api/v1/cart/items',
+    (route) => {
+      added = route.request().postDataJSON();
+      return route.fulfill({ json: { items: [] } });
+    },
   );
   await page.goto(catalog);
   const card = cardOf(page, product.translations.ru.name);
   await card.getByRole('button', { name: 'В корзину' }).click();
-  await expect(
-    card.getByRole('link', { name: 'Войдите, чтобы добавить товар' }),
-  ).toHaveAttribute('href', '/ru/account/');
+  // Вместо страницы входа — окно поверх каталога.
+  const dialog = page.getByRole('dialog', { name: 'Аккаунт' });
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(catalog);
+  await dialog.getByLabel('Электронная почта').fill('buyer@example.test');
+  await dialog.getByLabel('Пароль', { exact: true }).fill('very-long-password');
+  await dialog.getByRole('button', { name: 'Войти', exact: true }).click();
+  // Окно закрылось — товар добавился сам.
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await expect
+    .poll(() => added)
+    .toEqual({ variantId: product.variants[0]?.id, quantity: 1 });
 });
 
 test('a card with several photos flips through them under the mouse', async ({

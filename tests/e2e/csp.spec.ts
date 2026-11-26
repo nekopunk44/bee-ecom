@@ -50,7 +50,7 @@ test('the deployed content security policy blocks nothing on storefront pages', 
     '/ru/catalog/',
     `/ru/catalog/${product.slug}/`,
     '/ru/cart/',
-    '/ru/account/',
+    '/ru/favorites/',
     '/ru/checkout/',
   ]) {
     await page.goto(`${storefront}${path}`);
@@ -63,7 +63,7 @@ test('interactive blocks and the 3D story start under the deployed policy', asyn
   page,
 }) => {
   await withDeployedPolicy(page);
-  await page.goto(`${storefront}/ru/account/`);
+  await page.goto(`${storefront}/ru/cart/`);
   await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
   await page.goto(`${storefront}/ru/catalog/${product.slug}/`);
   await expect(page.locator('astro-island[ssr]')).toHaveCount(0);
