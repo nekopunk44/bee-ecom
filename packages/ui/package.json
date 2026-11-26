@@ -6,7 +6,8 @@
     "./tokens.css": "./src/tokens.css",
     "./base.css": "./src/base.css",
     "./fonts.css": "./src/fonts.css",
-    "./motion.css": "./src/motion.css"
+    "./motion.css": "./src/motion.css",
+    "./cell.css": "./src/cell.css"
   },
   "dependencies": {
     "@fontsource-variable/onest": "5.3.1",

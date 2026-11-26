@@ -1,0 +1,108 @@
+/*
+ * Окна входа на витрине и в админке появляются сотой и сотой же уходят. Маленькая
+ * шестигранная сота вылетает из точки, смещённой от центра карточки на --cell-x и
+ * --cell-y (без них — из самого центра), вырастает и раскрывается в карточку. При
+ * закрытии всё наоборот: карточка сворачивается в соту и улетает туда, откуда пришла.
+ */
+:root {
+  --cell-shape: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  /* Те же шесть точек за краями карточки: в конце раскрытия обрезать уже нечего,
+     и скруглённые углы и тень проявляются без скачка. */
+  --card-shape: polygon(
+    50% -10%,
+    110% -10%,
+    110% 110%,
+    50% 110%,
+    -10% 110%,
+    -10% -10%
+  );
+}
+
+/* Сота летит медовой и белеет, пока раскрывается в карточку. */
+@keyframes cell-open {
+  0% {
+    opacity: 0;
+    translate: var(--cell-x, 0px) var(--cell-y, 0px);
+    scale: 0.12;
+    clip-path: var(--cell-shape);
+    background-color: var(--color-honey);
+    animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    translate: 0 0;
+    scale: 1.02;
+    clip-path: var(--cell-shape);
+    background-color: var(--color-honey);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    clip-path: var(--card-shape);
+    background-color: var(--color-paper);
+  }
+}
+
+/* Карточка медовеет, сворачивается в соту, и та улетает, уменьшаясь до точки. */
+@keyframes cell-close {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    clip-path: var(--card-shape);
+    background-color: var(--color-paper);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1);
+  }
+  32% {
+    translate: 0 0;
+    scale: 0.94;
+    clip-path: var(--cell-shape);
+    background-color: var(--color-honey);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.35, 1);
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: var(--cell-x, 0px) var(--cell-y, 0px);
+    scale: 0.06;
+    clip-path: var(--cell-shape);
+    background-color: var(--color-honey);
+  }
+}
+
+/* Содержимое встаёт по очереди, когда сота раскрылась, и гаснет, прежде чем она свернётся. */
+@keyframes cell-content-in {
+  from {
+    opacity: 0;
+    translate: 0 0.75rem;
+  }
+}
+@keyframes cell-content-out {
+  to {
+    opacity: 0;
+    translate: 0 -0.35rem;
+  }
+}
+/* Знак-сота в заголовке окна докручивается на место. */
+@keyframes cell-mark-in {
+  from {
+    rotate: -120deg;
+    scale: 0;
+  }
+}
+@keyframes cell-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cell-fade-out {
+  to {
+    opacity: 0;
+  }
+}
