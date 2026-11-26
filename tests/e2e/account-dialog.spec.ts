@@ -106,3 +106,31 @@ test('a failed Google sign-in reopens the window with an explanation', async ({
   );
   await expect(page).toHaveURL(catalog);
 });
+
+test('the window flies back into the icon on Escape, the cross and the backdrop', async ({
+  page,
+}) => {
+  await api(page, false);
+  await page.goto(catalog);
+  await ready(page);
+  const icon = page.getByRole('banner').getByRole('link', { name: 'Аккаунт' });
+  const open = page.locator('dialog[open]');
+  await icon.click();
+  // Сота вылетает из значка: в начале окно смещено к нему.
+  await expect(open).toHaveCount(1);
+  const offset = await open.evaluate((dialog: HTMLElement) =>
+    Number.parseFloat(dialog.style.getPropertyValue('--cell-x')),
+  );
+  expect(offset).toBeGreaterThan(0);
+  // Escape закрывает с анимацией: сначала окно сворачивается, потом исчезает.
+  await page.keyboard.press('Escape');
+  await expect(open).toHaveCount(0);
+  await expect(icon).toHaveClass(/bump/);
+  await icon.click();
+  await page.getByRole('button', { name: 'Закрыть' }).click();
+  await expect(open).toHaveCount(0);
+  await icon.click();
+  await expect(open).toHaveCount(1);
+  await page.mouse.click(4, 4);
+  await expect(open).toHaveCount(0);
+});

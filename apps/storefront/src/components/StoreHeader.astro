@@ -156,18 +156,19 @@ const text = {
   // Значок аккаунта открывает окно поверх страницы. Само окно (Svelte) загружается
   // при первом нажатии, поэтому на страницах без нужды в нём нет ни байта.
   const locale = document.documentElement.lang === 'ro' ? 'ro' : 'ru';
-  const account = (outcome?: string | null) =>
+  const account = (outcome?: string | null, from?: Element | null) =>
     import('../lib/account-dialog').then(({ openAccount }) =>
-      openAccount(locale, outcome),
+      openAccount(locale, outcome, from),
     );
   document.addEventListener('click', (event) => {
     if (event.defaultPrevented || event.button !== 0) return;
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
     const target = event.target instanceof Element ? event.target : null;
-    if (!target?.closest('[data-account-trigger]')) return;
+    const trigger = target?.closest('[data-account-trigger]');
+    if (!trigger) return;
     event.preventDefault();
-    void account();
+    void account(null, trigger);
   });
   // Вернулись от Google: показываем итог и убираем пометку из адреса.
   const outcome = new URLSearchParams(location.search).get('signin');
