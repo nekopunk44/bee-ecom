@@ -45,12 +45,15 @@ int main() {
         redis->setTimeout(2.0);
         bee::configureHttp();
         bee::Executor executor(4);
-        const bool secure = config.environment=="production" || config.environment=="staging";
-        auto auth = std::make_shared<bee::auth::Service>(postgres, secure,
-            bee::auth::requiredEnv("ADMIN_ORIGIN"), bee::auth::requiredEnv("STOREFRONT_ORIGIN"));
+        // Cookies are Secure whenever both sites are served over HTTPS. The Render demo
+        // runs with development database settings, so APP_ENV alone left them plain.
+        const auto adminOrigin = bee::auth::requiredEnv("ADMIN_ORIGIN");
+        const auto storefrontOrigin = bee::auth::requiredEnv("STOREFRONT_ORIGIN");
+        const bool secure = config.environment=="production" || config.environment=="staging" ||
+            (adminOrigin.starts_with("https://") && storefrontOrigin.starts_with("https://"));
+        auto auth = std::make_shared<bee::auth::Service>(postgres, secure, adminOrigin, storefrontOrigin);
         bee::auth::registerRoutes(auth,executor);
-        bee::auth::registerGoogleRoutes(std::make_shared<bee::auth::Google>(auth, secure,
-            bee::auth::requiredEnv("STOREFRONT_ORIGIN")), executor);
+        bee::auth::registerGoogleRoutes(std::make_shared<bee::auth::Google>(auth, secure, storefrontOrigin), executor);
         bee::catalog::registerRoutes(std::make_shared<bee::catalog::Service>(std::make_shared<bee::catalog::Repository>(postgres)),auth,executor);
         bee::media::registerRoutes(std::make_shared<bee::media::Service>(postgres,std::make_shared<bee::media::S3Storage>()),auth,executor);
         bee::inventory::registerRoutes(std::make_shared<bee::inventory::Service>(postgres),auth,executor);
