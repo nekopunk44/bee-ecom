@@ -1,140 +1,411 @@
 <script lang="ts">
-  import { createApiClient } from '@bee/api-client';
-  import CatalogWorkspace from './components/CatalogWorkspace.svelte';
-  const api = createApiClient();
-  let busy = $state(false);
-  let status = $state('Проверка ещё не выполнялась.');
-  let requestId = $state('');
+  import { onMount } from 'svelte';
+  import { api, type Session } from './lib/catalog';
+  import Icon from './components/Icon.svelte';
+  import LoginForm from './components/LoginForm.svelte';
+  import ConnectionCheck from './components/ConnectionCheck.svelte';
+  import ProductsWorkspace from './components/ProductsWorkspace.svelte';
+  import ReferenceEditor from './components/ReferenceEditor.svelte';
+  import InventoryWorkspace from './components/InventoryWorkspace.svelte';
+  import OrdersWorkspace from './components/OrdersWorkspace.svelte';
 
-  async function checkReadiness() {
-    busy = true;
-    requestId = '';
+  type Section = 'products' | 'orders' | 'inventory' | 'references';
+  let session = $state<Session | null>(null);
+  // Сессия истекла посреди работы: вход поверх раздела, чтобы не потерять введённое.
+  let needsLogin = $state(false);
+  let checked = $state(false);
+  let error = $state('');
+  let section = $state<Section>('products');
+  let newOrders = $state(0);
+  const can = (permission: string) =>
+    session?.permissions.includes(permission) ?? false;
+  const sections = $derived(
+    (
+      [
+        ['products', 'Товары', 'products', can('products.read')],
+        ['orders', 'Заказы', 'orders', can('orders.read')],
+        ['inventory', 'Склады и остатки', 'inventory', can('inventory.read')],
+        ['references', 'Справочники', 'references', can('products.write')],
+      ] as const
+    ).filter(([, , , allowed]) => allowed),
+  );
+  const store = location.origin.replace('-admin', '');
+
+  async function countOrders() {
+    if (!can('orders.read')) return;
     try {
-      const { data, error, response } = await api.GET('/api/v1/health/ready', {
-        signal: AbortSignal.timeout(7000),
+      const result = await api.GET('/api/v1/admin/orders', {
+        params: { query: { status: 'new', limit: 1, offset: 0 } },
+        signal: AbortSignal.timeout(10000),
       });
-      requestId = response.headers.get('X-Request-Id') ?? '';
-      status =
-        data?.status === 'ready'
-          ? 'API готово к работе. PostgreSQL и Redis доступны.'
-          : error
-            ? 'API пока не готово. Проверьте состояние сервисов.'
-            : 'Получен неожиданный ответ сервера.';
+      newOrders = result.data?.counts.new ?? 0;
     } catch {
-      status =
-        'Не удалось связаться с API. Проверьте подключение и повторите попытку.';
-    } finally {
-      busy = false;
+      // Счётчик в меню необязателен.
     }
   }
+  async function current() {
+    try {
+      const result = await api.GET('/api/v1/auth/session', {
+        signal: AbortSignal.timeout(7000),
+      });
+      if (result.data) {
+        session = result.data;
+        needsLogin = false;
+        // Без доступа к каталогу открывается первый раздел, который сотруднику доступен.
+        if (!sections.some(([key]) => key === section))
+          section = sections[0]?.[0] ?? 'products';
+        void countOrders();
+      }
+    } catch {
+      error = 'API недоступно. Войти можно после восстановления подключения.';
+    } finally {
+      checked = true;
+    }
+  }
+  async function logout() {
+    try {
+      const result = await api.POST('/api/v1/auth/logout', {
+        signal: AbortSignal.timeout(7000),
+      });
+      if (result.error) return;
+      session = null;
+    } catch {
+      error = 'Не удалось завершить сессию. Повторите выход.';
+    }
+  }
+  function open(next: Section) {
+    section = next;
+    void countOrders();
+  }
+  onMount(() => void current());
 </script>
 
 <a class="skip-link" href="#main">Перейти к содержимому</a>
-<header>
-  <div class="container bar">
-    <strong class="brand"
-      ><svg width="26" height="29" viewBox="0 0 30 34" aria-hidden="true"
-        ><polygon points="15,1 29,9 29,25 15,33 1,25 1,9" fill="#f5b700"
-        ></polygon></svg
-      >bee<span>управление</span></strong
-    ><span class="section">Каталог</span>
+{#if !session}
+  <main id="main" class="welcome">
+    <svg class="comb" aria-hidden="true">
+      <defs>
+        <pattern
+          id="comb"
+          width="56"
+          height="97"
+          patternUnits="userSpaceOnUse"
+          patternTransform="scale(1.2)"
+        >
+          <path
+            d="M28 0 56 16v32L28 64 0 48V16z M28 64v33 M0 97V81l28-17 28 17v16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.2"
+          />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#comb)" />
+    </svg>
+    <div class="welcome-inner">
+      <p class="logo">
+        <svg width="30" height="34" viewBox="0 0 30 34" aria-hidden="true"
+          ><polygon points="15,1 29,9 29,25 15,33 1,25 1,9" fill="#f5b700"
+          ></polygon></svg
+        >bee<span>управление</span>
+      </p>
+      {#if checked}
+        <LoginForm
+          title="Вход для сотрудников"
+          {error}
+          onSignedIn={() => current()}
+        />
+      {/if}
+      <ConnectionCheck tone="dark" />
+    </div>
+  </main>
+{:else}
+  <div class="shell">
+    <aside class="sidebar">
+      <p class="logo">
+        <svg width="24" height="27" viewBox="0 0 30 34" aria-hidden="true"
+          ><polygon points="15,1 29,9 29,25 15,33 1,25 1,9" fill="#f5b700"
+          ></polygon></svg
+        >bee<span>управление</span>
+      </p>
+      <nav aria-label="Разделы управления" data-admin-nav>
+        {#each sections as [key, label, icon] (key)}
+          <button
+            type="button"
+            aria-current={section === key ? 'page' : undefined}
+            onclick={() => open(key)}
+          >
+            <Icon name={icon} />
+            <span>{label}</span>
+            {#if key === 'orders' && newOrders > 0}<b>{newOrders}</b>{/if}
+          </button>
+        {/each}
+      </nav>
+      <div class="sidebar-foot">
+        <a class="store" href={store} target="_blank" rel="noopener"
+          ><Icon name="store" size={18} />Открыть магазин</a
+        >
+        <ConnectionCheck tone="dark" />
+        <div class="user">
+          <span class="avatar" aria-hidden="true"
+            >{session.email.charAt(0).toUpperCase()}</span
+          >
+          <span class="email">{session.email}</span>
+          <button
+            class="logout"
+            type="button"
+            aria-label="Выйти"
+            title="Выйти"
+            onclick={logout}><Icon name="logout" size={18} /></button
+          >
+        </div>
+      </div>
+    </aside>
+    <main id="main" class="content">
+      {#if error}<p class="message error" role="alert">{error}</p>{/if}
+      {#if section === 'products'}
+        <ProductsWorkspace
+          permissions={session.permissions}
+          onExpired={() => (needsLogin = true)}
+        />
+      {:else if section === 'orders'}
+        <OrdersWorkspace
+          permissions={session.permissions}
+          onExpired={() => (needsLogin = true)}
+          onChanged={() => void countOrders()}
+        />
+      {:else if section === 'inventory'}
+        <InventoryWorkspace
+          permissions={session.permissions}
+          onExpired={() => (needsLogin = true)}
+        />
+      {:else}
+        <ReferenceEditor onExpired={() => (needsLogin = true)} />
+      {/if}
+    </main>
   </div>
-</header>
-<main id="main" class="container">
-  <p class="eyebrow">Управление магазином</p>
-  <h1 class="display">Рабочее пространство Bee</h1>
-  <p class="intro">
-    Товары, переводы, изображения, остатки на складах и заказы покупателей.
-  </p>
-  <CatalogWorkspace />
-  <details>
-    <summary>Проверка подключения</summary>
-    <section aria-labelledby="connection-heading">
-      <h2 id="connection-heading">Подключение к API</h2>
-      <p role="status" aria-live="polite">{status}</p>
-      {#if requestId}<p class="request-id">Код запроса: {requestId}</p>{/if}
-      <button class="button" onclick={checkReadiness} disabled={busy}
-        >{busy ? 'Проверяем…' : 'Проверить подключение'}</button
-      >
-    </section>
-  </details>
-</main>
+  {#if needsLogin}
+    <div
+      class="relogin"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Войти снова"
+    >
+      <LoginForm title="Войти снова" onSignedIn={() => current()} />
+    </div>
+  {/if}
+{/if}
 
 <style>
-  header {
-    background: var(--color-night);
-    color: #ffffff;
-  }
-  .bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm) var(--space-md);
-    justify-content: space-between;
-    align-items: center;
-    padding-block: var(--space-md);
-  }
-  .brand {
+  .logo {
     display: flex;
     align-items: center;
     gap: 0.55rem;
+    margin: 0;
     font-family: var(--font-display);
     font-size: 1.6rem;
     font-weight: 800;
     letter-spacing: -0.05em;
     line-height: 1;
+    color: #ffffff;
   }
-  .brand span {
-    margin-left: 0.35rem;
+  .logo span {
+    margin-left: 0.2rem;
     font-family: var(--font-body);
-    font-size: var(--text-body);
+    font-size: 0.9375rem;
     font-weight: 500;
     letter-spacing: 0;
     color: var(--color-night-muted);
   }
-  .section {
-    padding: 0.4rem 0.9rem;
+
+  /* Вход: графитовый экран с сотами, форма посередине. */
+  .welcome {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: var(--space-lg) var(--space-md);
+    overflow: hidden;
+    background: var(--color-night);
+  }
+  .comb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--color-night-line);
+    opacity: 0.6;
+  }
+  .welcome-inner {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-lg);
+    width: min(26rem, 100%);
+  }
+
+  /* Боковая панель. */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    height: 100vh;
+    padding: var(--space-lg) var(--space-md) var(--space-md);
+    background: var(--color-night);
+    color: var(--color-night-text);
+    --color-focus: var(--color-honey);
+  }
+  nav {
+    display: grid;
+    gap: 0.2rem;
+  }
+  nav button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.8rem;
+    border: 0;
+    border-radius: 0.85rem;
+    background: transparent;
+    color: var(--color-night-text);
+    font-weight: 600;
+    text-align: left;
+    transition:
+      background var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard);
+  }
+  nav button:hover {
+    background: var(--color-night-raised);
+    color: #ffffff;
+  }
+  nav button[aria-current] {
+    background: var(--color-honey);
+    color: var(--color-ink);
+  }
+  nav span {
+    flex: 1;
+  }
+  nav b {
+    min-width: 1.4rem;
+    padding: 0.05rem 0.4rem;
     border-radius: var(--radius-pill);
     background: var(--color-honey);
     color: var(--color-ink);
-    font-size: var(--text-sm);
-    font-weight: 700;
+    font-size: 0.75rem;
+    text-align: center;
   }
-  main {
-    padding-block: var(--space-xl);
+  nav button[aria-current] b {
+    background: var(--color-ink);
+    color: var(--color-honey);
   }
-  .eyebrow {
-    margin: 0;
+  .sidebar-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-md);
+    margin-top: auto;
   }
-  h1 {
-    margin: var(--space-sm) 0 var(--space-sm);
-    font-size: clamp(2rem, 4.4vw, 3rem);
-    line-height: 1.05;
-    letter-spacing: -0.04em;
-  }
-  .intro {
-    max-width: 45rem;
-    margin: 0;
-    color: var(--color-muted);
-  }
-  summary {
-    cursor: pointer;
+  .store {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-night-muted);
+    font-size: 0.875rem;
     font-weight: 600;
+    text-decoration: none;
   }
-  section {
-    max-width: 48rem;
-    margin-block: var(--space-md) var(--space-xl);
-    padding: var(--space-lg);
-    border: 2px solid var(--color-line);
-    border-radius: var(--radius-md);
-    background: var(--color-paper);
+  .store:hover {
+    color: #ffffff;
   }
-  h2 {
-    margin-top: 0;
-    font-size: 1.25rem;
+  .user {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-night-line);
   }
-  .request-id {
-    font-family: monospace;
-    font-size: var(--text-sm);
-    overflow-wrap: anywhere;
+  .avatar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--color-night-raised);
+    color: var(--color-honey);
+    font-weight: 800;
+  }
+  .email {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.8125rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .logout {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-night-muted);
+  }
+  .logout:hover {
+    background: var(--color-night-raised);
+    color: #ffffff;
+  }
+  .relogin {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: var(--space-md);
+    background: rgb(23 21 15 / 55%);
+  }
+
+  /* На узком экране панель — полоса сверху, разделы прокручиваются вбок. */
+  @media (max-width: 63.99rem) {
+    .sidebar {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm) var(--space-md);
+      height: auto;
+      padding: var(--space-sm) var(--space-md);
+    }
+    nav {
+      display: flex;
+      order: 3;
+      width: 100%;
+      overflow-x: auto;
+    }
+    nav button {
+      width: auto;
+      white-space: nowrap;
+    }
+    .sidebar-foot {
+      display: flex;
+      align-items: center;
+      margin: 0 0 0 auto;
+    }
+    .sidebar-foot .store,
+    .sidebar-foot :global(details),
+    .email {
+      display: none;
+    }
+    .user {
+      padding: 0;
+      border: 0;
+    }
   }
 </style>
