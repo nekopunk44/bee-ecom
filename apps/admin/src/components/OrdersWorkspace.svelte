@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import type { components } from '@bee/api-client';
   import { api, errorText } from '../lib/catalog';
   import Drawer from './Drawer.svelte';
@@ -13,10 +13,12 @@
     permissions,
     onExpired,
     onChanged,
+    tools,
   }: {
     permissions: string[];
     onExpired: () => void;
     onChanged?: () => void;
+    tools?: Snippet;
   } = $props();
 
   const pageSize = 25;
@@ -242,6 +244,7 @@
         aria-label="Поиск заказа"
       />
     </form>
+    {@render tools?.()}
   </div>
 </header>
 

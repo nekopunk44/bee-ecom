@@ -730,6 +730,7 @@ export interface components {
                 currency: "MDL";
             })[];
             images: components["schemas"]["Image"][];
+            stock?: components["schemas"]["ProductStock"];
         };
         ProductDraft: {
             slug: string;
@@ -823,6 +824,17 @@ export interface components {
             attributes: {
                 [key: string]: string;
             };
+        };
+        /** @description Stock across warehouses; only the administration list carries it. */
+        ProductStock: {
+            onHand: number;
+            reserved: number;
+            warehouses: {
+                code: string;
+                name: string;
+                onHand: number;
+                reserved: number;
+            }[];
         };
         FacetCount: {
             /** Format: uuid */
@@ -1091,6 +1103,7 @@ export interface operations {
                 limit?: number;
                 minPrice?: number;
                 maxPrice?: number;
+                status?: "draft" | "active" | "archived";
             };
             header?: never;
             path?: never;

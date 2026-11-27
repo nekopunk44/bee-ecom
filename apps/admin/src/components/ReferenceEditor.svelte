@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import { api, errorText, type Metadata } from '../lib/catalog';
   import Icon from './Icon.svelte';
-  let { onExpired }: { onExpired: () => void } = $props();
+  let { onExpired, tools }: { onExpired: () => void; tools?: Snippet } =
+    $props();
   type Kind = 'categories' | 'brands' | 'attributes';
   let metadata = $state<Metadata>({
     categories: [],
@@ -86,6 +87,7 @@
     <h1>Справочники</h1>
     <p>Категории, бренды и характеристики для карточек товаров</p>
   </div>
+  {@render tools?.()}
 </header>
 
 {#if error}<p role="alert" class="message error">{error}</p>{/if}

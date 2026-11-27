@@ -10,6 +10,8 @@ Json::Value Repository::list(const Filter& f,bool admin) const {
     // ignore the chosen category, the price histogram ignores the price range), so the
     // shopper sees what another choice would give. The histogram has 24 buckets on a
     // logarithmic scale between the cheapest and the dearest product.
+    // The administration list instead filters by status and adds each product's stock,
+    // in total and per warehouse, so the list shows what is left without another request.
     const auto rows=db_->execSqlSync(R"SQL(
       WITH variants AS (
         SELECT p.id,p.created_at,p.brand_id,t.name,v.price_minor,
@@ -18,7 +20,7 @@ Json::Value Repository::list(const Filter& f,bool admin) const {
           v.price_minor BETWEEN $6::bigint AND $7::bigint AS in_price
         FROM products p JOIN product_translations t ON t.product_id=p.id AND t.locale=$1
         JOIN product_variants v ON v.product_id=p.id AND ($2::boolean OR v.active)
-        WHERE ($2::boolean OR p.status='active')
+        WHERE ($2::boolean OR p.status='active') AND (NOT $2::boolean OR $12='' OR p.status=$12)
           AND ($3='' OR to_tsvector('simple',t.name||' '||t.description) @@ plainto_tsquery('simple',$3) OR t.name ILIKE '%'||replace(replace(replace($3,'\','\\'),'%','\%'),'_','\_')||'%')
       ), filtered AS (
         SELECT id,created_at,name,min(price_minor) AS price FROM variants
@@ -32,7 +34,14 @@ Json::Value Repository::list(const Filter& f,bool admin) const {
       ), prices AS (
         SELECT id,min(price_minor) AS price FROM variants WHERE in_category AND in_brand GROUP BY id
       )
-      SELECT (jsonb_build_object('items',COALESCE((SELECT jsonb_agg(catalog_document(id)) FROM page),'[]'),
+      SELECT (jsonb_build_object('items',COALESCE((SELECT jsonb_agg(CASE WHEN $2::boolean
+          THEN catalog_document(page.id)||jsonb_build_object('stock',(
+            SELECT jsonb_build_object('onHand',COALESCE(sum(per.on_hand),0),'reserved',COALESCE(sum(per.reserved),0),
+              'warehouses',COALESCE(jsonb_agg(jsonb_build_object('code',per.code,'name',per.name,'onHand',per.on_hand,'reserved',per.reserved) ORDER BY per.code),'[]'))
+            FROM (SELECT w.code,w.name,sum(b.on_hand)::integer AS on_hand,sum(b.reserved)::integer AS reserved
+              FROM inventory_balances b JOIN product_variants pv ON pv.id=b.variant_id JOIN warehouses w ON w.id=b.warehouse_id
+              WHERE pv.product_id=page.id GROUP BY w.code,w.name) per))
+          ELSE catalog_document(page.id) END) FROM page),'[]'),
         'total',(SELECT count(*) FROM filtered),'page',$11::integer,'limit',$9::integer)
         || CASE WHEN $2::boolean THEN '{}'::jsonb ELSE jsonb_build_object('facets',jsonb_build_object(
           'categories',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',category_id,'count',products) ORDER BY category_id) FROM (
@@ -47,7 +56,7 @@ Json::Value Repository::list(const Filter& f,bool admin) const {
               FROM prices GROUP BY 1) counted ON counted.slot=bucket))
             FROM (SELECT min(price) AS low,max(price) AS high FROM prices) bounds WHERE high IS NOT NULL)
         )) END)::text AS document
-    )SQL", f.locale,admin,f.query,f.category,f.brand,f.minPrice,f.maxPrice,f.sort,f.limit,(f.page-1)*f.limit,f.page);
+    )SQL", f.locale,admin,f.query,f.category,f.brand,f.minPrice,f.maxPrice,f.sort,f.limit,(f.page-1)*f.limit,f.page,f.status);
     return decode(rows[0]["document"].as<std::string>());
 }
 Json::Value Repository::find(const std::string& key,bool admin) const {

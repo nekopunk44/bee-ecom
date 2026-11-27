@@ -215,6 +215,9 @@
           "items": {
             "$ref": "#/schemas/Image"
           }
+        },
+        "stock": {
+          "$ref": "#/schemas/ProductStock"
         }
       }
     },
@@ -399,6 +402,40 @@
         },
         "unit": {
           "type": "string"
+        }
+      }
+    },
+    "ProductStock": {
+      "type": "object",
+      "description": "Stock across warehouses; only the administration list carries it.",
+      "required": ["onHand", "reserved", "warehouses"],
+      "properties": {
+        "onHand": {
+          "type": "integer"
+        },
+        "reserved": {
+          "type": "integer"
+        },
+        "warehouses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "name", "onHand", "reserved"],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "onHand": {
+                "type": "integer"
+              },
+              "reserved": {
+                "type": "integer"
+              }
+            }
+          }
         }
       }
     }
@@ -667,6 +704,14 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 100000000
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "active", "archived"]
             }
           }
         ]
