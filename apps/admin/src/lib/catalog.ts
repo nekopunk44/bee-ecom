@@ -42,7 +42,8 @@ export function errorText(code?: string) {
     case 'FORBIDDEN':
       return 'Недостаточно прав для этого действия.';
     case 'ORIGIN_REJECTED':
-      return 'Адрес админки не совпадает с ADMIN_ORIGIN в настройках API.';
+      // Чаще всего админку открыли по ссылке на предпросмотр Vercel, а не по основному адресу.
+      return `Админка открыта с адреса ${location.host}, а API принимает вход только с основного адреса админки (ADMIN_ORIGIN). Откройте админку по основному адресу.`;
     case 'REVISION_CONFLICT':
       return 'Товар изменён другим сотрудником. Скопируйте нужные изменения и откройте актуальную версию.';
     case 'DUPLICATE_SLUG_OR_SKU':
