@@ -9,6 +9,8 @@ import {
   Matrix4,
   Mesh,
   MeshStandardMaterial,
+  PCFShadowMap,
+  PMREMGenerator,
   PerspectiveCamera,
   Plane,
   PointLight,
@@ -22,6 +24,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import {
   BODY_FRAME,
   HIVE,
@@ -112,14 +115,34 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
   const lowPower = software || (navigator.hardwareConcurrency ?? 8) <= 4;
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.setClearColor(0x000000, 0);
+  // Мягкие тени от тёплого верхнего света; на слабых устройствах их нет.
+  renderer.shadowMap.enabled = !lowPower;
+  renderer.shadowMap.type = PCFShadowMap;
 
   const scene = new Scene();
   const fog = new Fog(palette.night, 20, 60);
   scene.fog = fog;
+  // Рассеянный свет «комнаты»: краска и жесть крыши получают живые отражения.
+  const pmrem = new PMREMGenerator(renderer);
+  const environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environment = environment;
+  scene.environmentIntensity = 0.3;
   const camera = new PerspectiveCamera(30, 1, 0.1, 200);
-  scene.add(new HemisphereLight('#fff2c7', palette.night, 2));
-  const key = new DirectionalLight('#ffffff', 3.4);
+  scene.add(new HemisphereLight('#fff2c7', palette.night, 1));
+  const key = new DirectionalLight('#fff4e0', 3.2);
   key.position.set(6, 12, 9);
+  key.castShadow = !lowPower;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -10;
+  key.shadow.camera.right = 10;
+  key.shadow.camera.top = 12;
+  key.shadow.camera.bottom = -8;
+  key.shadow.camera.near = 1;
+  key.shadow.camera.far = 40;
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.02;
+  key.shadow.radius = 4;
   const rim = new DirectionalLight(palette.honey, 3);
   rim.position.set(-8, 4, -6);
   scene.add(key, rim);
@@ -627,6 +650,7 @@ export function startHiveStory(options: StoryOptions): (() => void) | null {
     window.removeEventListener('pointermove', onMove);
     options.story.removeEventListener('pointerdown', onDown);
     options.canvas.removeEventListener('webglcontextlost', lost);
+    environment.dispose();
     renderer.dispose();
   }
   function lost(event: Event) {
