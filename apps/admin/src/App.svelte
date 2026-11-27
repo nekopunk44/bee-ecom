@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import type { components } from '@bee/api-client';
   import { api, type Session } from './lib/catalog';
   import Icon from './components/Icon.svelte';
+  import HexBadge from './components/HexBadge.svelte';
+  import NewOrders from './components/NewOrders.svelte';
+  import ServerStatus from './components/ServerStatus.svelte';
   import LoginForm from './components/LoginForm.svelte';
   import ConnectionCheck from './components/ConnectionCheck.svelte';
   import ProductsWorkspace from './components/ProductsWorkspace.svelte';
@@ -22,28 +26,43 @@
   // Админка открылась сразу после входа: панель и раздел въезжают.
   let entering = $state(false);
   let newOrders = $state(0);
+  let newOrderList = $state<components['schemas']['AdminOrderSummary'][]>([]);
   const can = (permission: string) =>
     session?.permissions.includes(permission) ?? false;
   const sections = $derived(
     (
       [
-        ['products', 'Товары', 'products', can('products.read')],
-        ['orders', 'Заказы', 'orders', can('orders.read')],
-        ['inventory', 'Склады и остатки', 'inventory', can('inventory.read')],
-        ['references', 'Справочники', 'references', can('products.write')],
+        ['products', 'Товары', 'Товары', 'products', can('products.read')],
+        ['orders', 'Заказы', 'Заказы', 'orders', can('orders.read')],
+        [
+          'inventory',
+          'Склады и остатки',
+          'Склады',
+          'inventory',
+          can('inventory.read'),
+        ],
+        [
+          'references',
+          'Справочники',
+          'Справочники',
+          'references',
+          can('products.write'),
+        ],
       ] as const
-    ).filter(([, , , allowed]) => allowed),
+    ).filter(([, , , , allowed]) => allowed),
   );
   const store = location.origin.replace('-admin', '');
 
+  /** Новые заказы для соты в меню и уведомлений: число и пять последних. */
   async function countOrders() {
     if (!can('orders.read')) return;
     try {
       const result = await api.GET('/api/v1/admin/orders', {
-        params: { query: { status: 'new', limit: 1, offset: 0 } },
+        params: { query: { status: 'new', limit: 5, offset: 0 } },
         signal: AbortSignal.timeout(10000),
       });
       newOrders = result.data?.counts.new ?? 0;
+      newOrderList = result.data?.items ?? [];
     } catch {
       // Счётчик в меню необязателен.
     }
@@ -116,8 +135,23 @@
     section = next;
     void countOrders();
   }
-  onMount(() => void current());
+  onMount(() => {
+    void current();
+    // Новые заказы появляются без перезагрузки: раз в полминуты спрашиваем сервер.
+    const timer = setInterval(() => {
+      if (session && !document.hidden) void countOrders();
+    }, 30000);
+    return () => clearInterval(timer);
+  });
 </script>
+
+{#snippet tools()}
+  {#if can('orders.read')}<NewOrders
+      count={newOrders}
+      orders={newOrderList}
+      onOpen={() => open('orders')}
+    />{/if}
+{/snippet}
 
 <a class="skip-link" href="#main">Перейти к содержимому</a>
 {#if !session}
@@ -173,16 +207,25 @@
           ></polygon></svg
         >bee<span>управление</span>
       </p>
+      <!-- На телефоне меню уезжает вниз и становится стеклянным «облаком». -->
       <nav aria-label="Разделы управления" data-admin-nav>
-        {#each sections as [key, label, icon] (key)}
+        {#each sections as [key, label, short, icon] (key)}
           <button
             type="button"
             aria-current={section === key ? 'page' : undefined}
+            aria-label={label}
             onclick={() => open(key)}
           >
             <Icon name={icon} />
-            <span>{label}</span>
-            {#if key === 'orders' && newOrders > 0}<b>{newOrders}</b>{/if}
+            <span class="long">{label}</span>
+            <span class="short" aria-hidden="true">{short}</span>
+            {#if key === 'orders' && newOrders > 0}<span class="count"
+                ><HexBadge
+                  value={newOrders}
+                  size="md"
+                  tone={section === key ? 'ink' : 'honey'}
+                /></span
+              >{/if}
           </button>
         {/each}
       </nav>
@@ -190,12 +233,14 @@
         <a class="store" href={store} target="_blank" rel="noopener"
           ><Icon name="store" size={18} />Открыть магазин</a
         >
-        <ConnectionCheck tone="dark" />
         <div class="user">
           <span class="avatar" aria-hidden="true"
             >{session.email.charAt(0).toUpperCase()}</span
           >
-          <span class="email">{session.email}</span>
+          <span class="who">
+            <span class="email">{session.email}</span>
+            <ServerStatus />
+          </span>
           <button
             class="logout"
             type="button"
@@ -212,20 +257,23 @@
         <ProductsWorkspace
           permissions={session.permissions}
           onExpired={() => (needsLogin = true)}
+          {tools}
         />
       {:else if section === 'orders'}
         <OrdersWorkspace
           permissions={session.permissions}
           onExpired={() => (needsLogin = true)}
           onChanged={() => void countOrders()}
+          {tools}
         />
       {:else if section === 'inventory'}
         <InventoryWorkspace
           permissions={session.permissions}
           onExpired={() => (needsLogin = true)}
+          {tools}
         />
       {:else}
-        <ReferenceEditor onExpired={() => (needsLogin = true)} />
+        <ReferenceEditor onExpired={() => (needsLogin = true)} {tools} />
       {/if}
     </main>
   </div>
@@ -311,22 +359,25 @@
     width: min(26rem, 100%);
   }
 
-  /* Боковая панель. */
+  /* Боковая панель: графит, разделы с иконками, внизу магазин и сотрудник. */
   .sidebar {
     position: sticky;
     top: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
+    gap: 1.75rem;
     height: 100vh;
-    padding: var(--space-lg) var(--space-md) var(--space-md);
+    padding: 1.75rem 1rem 1.25rem;
     background: var(--color-night);
     color: var(--color-night-text);
     --color-focus: var(--color-honey);
   }
+  .sidebar .logo {
+    padding: 0 0.5rem;
+  }
   nav {
     display: grid;
-    gap: 0.2rem;
+    gap: 0.25rem;
   }
   nav button {
     display: flex;
@@ -334,13 +385,14 @@
     gap: 0.75rem;
     width: 100%;
     min-height: 2.75rem;
-    padding: 0 0.8rem;
+    padding: 0 0.75rem;
     border: 0;
-    border-radius: 0.85rem;
+    border-radius: 0.875rem;
     background: transparent;
     color: var(--color-night-text);
     font-weight: 600;
     text-align: left;
+    cursor: pointer;
     transition:
       background var(--motion-fast) var(--ease-standard),
       color var(--motion-fast) var(--ease-standard);
@@ -352,33 +404,28 @@
   nav button[aria-current] {
     background: var(--color-honey);
     color: var(--color-ink);
+    font-weight: 700;
   }
-  nav span {
+  nav .long {
     flex: 1;
   }
-  nav b {
-    min-width: 1.4rem;
-    padding: 0.05rem 0.4rem;
-    border-radius: var(--radius-pill);
-    background: var(--color-honey);
-    color: var(--color-ink);
-    font-size: 0.75rem;
-    text-align: center;
+  nav .short {
+    display: none;
   }
-  nav button[aria-current] b {
-    background: var(--color-ink);
-    color: var(--color-honey);
+  .count {
+    display: inline-flex;
   }
   .sidebar-foot {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-md);
+    gap: 0.875rem;
     margin-top: auto;
   }
   .store {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
+    padding: 0 0.75rem;
     color: var(--color-night-muted);
     font-size: 0.875rem;
     font-weight: 600;
@@ -391,7 +438,7 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding-top: var(--space-md);
+    padding: 0.875rem 0.5rem 0 0.75rem;
     border-top: 1px solid var(--color-night-line);
   }
   .avatar {
@@ -405,11 +452,16 @@
     color: var(--color-honey);
     font-weight: 800;
   }
-  .email {
+  .who {
+    display: grid;
     flex: 1;
     min-width: 0;
+  }
+  .email {
     overflow: hidden;
-    font-size: 0.8125rem;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -424,6 +476,7 @@
     border-radius: 50%;
     background: transparent;
     color: var(--color-night-muted);
+    cursor: pointer;
   }
   .logout:hover {
     background: var(--color-night-raised);
@@ -452,40 +505,113 @@
     }
   }
 
-  /* На узком экране панель — полоса сверху, разделы прокручиваются вбок. */
+  /* Телефон и планшет: сверху скруглённая графитовая капсула с логотипом и
+     сотрудником, меню — стеклянное «облако» внизу экрана. */
   @media (max-width: 63.99rem) {
     .sidebar {
-      position: static;
+      position: sticky;
+      z-index: 20;
+      top: 0.625rem;
       flex-direction: row;
-      flex-wrap: wrap;
       align-items: center;
-      gap: var(--space-sm) var(--space-md);
+      gap: 0.75rem;
       height: auto;
-      padding: var(--space-sm) var(--space-md);
+      margin: 0.625rem 0.625rem 0;
+      padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+      border-radius: 1.75rem;
+      box-shadow: 0 0.625rem 1.5rem rgb(23 21 15 / 18%);
+    }
+    .sidebar .logo {
+      padding: 0;
+      font-size: 1.3rem;
+    }
+    .sidebar .logo svg {
+      width: 22px;
+      height: 25px;
     }
     nav {
-      display: flex;
-      order: 3;
-      width: 100%;
-      overflow-x: auto;
+      position: fixed;
+      z-index: 40;
+      right: 0.75rem;
+      bottom: 1rem;
+      left: 0.75rem;
+      display: grid;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      gap: 0.25rem;
+      padding: 0.375rem;
+      overflow: hidden;
+      border: 1px solid rgb(255 255 255 / 75%);
+      border-radius: 1.875rem;
+      background: rgb(255 255 255 / 42%);
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      box-shadow:
+        0 1.125rem 2.5rem rgb(23 21 15 / 22%),
+        0 0.125rem 0.375rem rgb(23 21 15 / 8%),
+        inset 0 1px 0 rgb(255 255 255 / 95%);
+    }
+    /* Блик сверху, как на зеркале. */
+    nav::before {
+      position: absolute;
+      inset: 0 0 45%;
+      background: linear-gradient(
+        180deg,
+        rgb(255 255 255 / 70%),
+        rgb(255 255 255 / 0%)
+      );
+      content: '';
+      pointer-events: none;
     }
     nav button {
-      width: auto;
-      white-space: nowrap;
+      position: relative;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.2rem;
+      min-height: 3.5rem;
+      padding: 0.4rem 0;
+      border-radius: 1.5rem;
+      color: var(--color-ink);
+      font-size: 0.75rem;
+    }
+    nav button:hover {
+      background: rgb(255 255 255 / 55%);
+      color: var(--color-ink);
+    }
+    nav button[aria-current] {
+      background: var(--color-ink);
+      color: #ffffff;
+      box-shadow: 0 0.375rem 0.875rem rgb(23 21 15 / 30%);
+    }
+    nav button[aria-current] :global(svg) {
+      color: var(--color-honey);
+    }
+    nav .long {
+      display: none;
+    }
+    nav .short {
+      display: block;
+    }
+    .count {
+      position: absolute;
+      top: 0.15rem;
+      left: calc(50% + 0.35rem);
     }
     .sidebar-foot {
       display: flex;
       align-items: center;
       margin: 0 0 0 auto;
     }
-    .sidebar-foot .store,
-    .sidebar-foot :global(details),
-    .email {
+    .store,
+    .who {
       display: none;
     }
     .user {
       padding: 0;
       border: 0;
+    }
+    .content {
+      padding-bottom: 7rem;
     }
   }
 </style>

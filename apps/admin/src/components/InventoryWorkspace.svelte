@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import { api, errorText, type Product } from '../lib/catalog';
   import Icon from './Icon.svelte';
 
@@ -7,7 +7,9 @@
   let {
     permissions,
     onExpired,
-  }: { permissions: string[]; onExpired: () => void } = $props();
+    tools,
+  }: { permissions: string[]; onExpired: () => void; tools?: Snippet } =
+    $props();
   let warehouses = $state<Warehouse[]>([]);
   let products = $state<Product[]>([]);
   let selectedWarehouse = $state('');
@@ -155,6 +157,7 @@
     <h1 id="inventory-heading">Склады и остатки</h1>
     <p>Складов: {warehouses.length}</p>
   </div>
+  {@render tools?.()}
 </header>
 
 {#if error}<p role="alert" class="message error">{error}</p>{/if}
