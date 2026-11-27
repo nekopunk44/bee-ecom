@@ -5,7 +5,8 @@
 
 namespace bee::catalog {
 struct Filter {
-    std::string locale="ru", query, category, brand, sort="newest";
+    // status narrows the administration list only; the public list always shows active products.
+    std::string locale="ru", query, category, brand, sort="newest", status;
     int page=1, limit=12;
     long long minPrice=0, maxPrice=100000000;
 };

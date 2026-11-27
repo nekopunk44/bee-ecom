@@ -75,6 +75,8 @@ Filter parseFilter(const drogon::HttpRequestPtr& req) {
     if(f.query.size()>200 || (!f.category.empty() && !uuid(f.category)) || (!f.brand.empty() && !uuid(f.brand))) throw Error(400,"INVALID_FILTER","Invalid search filter");
     if(!req->getParameter("sort").empty()) f.sort=req->getParameter("sort");
     if(f.sort!="newest" && f.sort!="price_asc" && f.sort!="price_desc" && f.sort!="name") throw Error(400,"INVALID_FILTER","Invalid sorting");
+    f.status=req->getParameter("status");
+    if(!f.status.empty() && f.status!="draft" && f.status!="active" && f.status!="archived") throw Error(400,"INVALID_FILTER","Invalid status");
     f.page=static_cast<int>(integer(req->getParameter("page"),1,10000)); f.limit=static_cast<int>(integer(req->getParameter("limit"),12,48));
     f.minPrice=integer(req->getParameter("minPrice"),0,100000000); f.maxPrice=integer(req->getParameter("maxPrice"),100000000,100000000);
     if(!f.page || !f.limit || f.minPrice>f.maxPrice) throw Error(400,"INVALID_FILTER","Invalid page or price range");

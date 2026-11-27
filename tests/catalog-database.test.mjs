@@ -103,6 +103,7 @@ test('actual repository query searches, filters, sorts and paginates public reco
       12,
       (page - 1) * 12,
       page,
+      '',
     ]);
   assert.equal(
     JSON.parse((await query('Дадан', category)).rows[0].document).total,
@@ -218,6 +219,7 @@ test('archived products disappear from the public query but remain in admin', as
     12,
     0,
     1,
+    '',
   ];
   assert.equal(
     JSON.parse((await db.query(sql[0], parameters)).rows[0].document).total,
@@ -229,4 +231,69 @@ test('archived products disappear from the public query but remain in admin', as
   );
   assert.equal(admin.total, 1);
   assert.equal(admin.facets, undefined);
+  // Без остатков на складах — нули и пустой список.
+  assert.deepEqual(admin.items[0].stock, {
+    onHand: 0,
+    reserved: 0,
+    warehouses: [],
+  });
+  // Вкладки статуса в админке: архив находится, на витрине — нет.
+  parameters[11] = 'archived';
+  assert.equal(
+    JSON.parse((await db.query(sql[0], parameters)).rows[0].document).total,
+    1,
+  );
+  parameters[11] = 'active';
+  assert.equal(
+    JSON.parse((await db.query(sql[0], parameters)).rows[0].document).total,
+    0,
+  );
+  // Публичный список статус не слушает: архивного товара там нет в любом случае.
+  parameters[1] = false;
+  parameters[11] = 'archived';
+  assert.equal(
+    JSON.parse((await db.query(sql[0], parameters)).rows[0].document).total,
+    0,
+  );
+});
+test('the admin list shows stock in total and per warehouse', async () => {
+  const warehouse = (
+    await db.query(
+      "INSERT INTO warehouses(code,name) VALUES('chisinau','Кишинёв, основной склад') RETURNING id",
+    )
+  ).rows[0].id;
+  await db.query(
+    'INSERT INTO inventory_balances(warehouse_id,variant_id,on_hand,reserved) VALUES($1,$2,7,2)',
+    [warehouse, product.variants[0].id],
+  );
+  const admin = JSON.parse(
+    (
+      await db.query(sql[0], [
+        'ru',
+        true,
+        '',
+        '',
+        '',
+        0,
+        100000000,
+        'newest',
+        12,
+        0,
+        1,
+        '',
+      ])
+    ).rows[0].document,
+  );
+  assert.deepEqual(admin.items[0].stock, {
+    onHand: 7,
+    reserved: 2,
+    warehouses: [
+      {
+        code: 'chisinau',
+        name: 'Кишинёв, основной склад',
+        onHand: 7,
+        reserved: 2,
+      },
+    ],
+  });
 });
