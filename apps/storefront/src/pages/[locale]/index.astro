@@ -540,10 +540,13 @@ const catalog = `/${locale}/catalog/`;
     border-radius: var(--radius-pill);
     background: #ffffff;
     box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+    transition: box-shadow var(--motion-normal) var(--ease-standard);
   }
+  /* В фокусе капсула плавно обводится мёдом, без толстой обводки с зазором. */
   .search:focus-within {
-    outline: 3px solid var(--color-honey);
-    outline-offset: 3px;
+    box-shadow:
+      0 1rem 3rem rgb(0 0 0 / 35%),
+      0 0 0 4px rgb(245 183 0 / 55%);
   }
   .search input {
     flex: 1;
@@ -554,7 +557,9 @@ const catalog = `/${locale}/catalog/`;
     color: var(--color-ink);
     font-size: 1.125rem;
   }
+  /* Фокус рисует вся капсула, само поле без рамки и ореола. */
   .search input:focus-visible {
+    box-shadow: none;
     outline: none;
   }
   .search .button {
