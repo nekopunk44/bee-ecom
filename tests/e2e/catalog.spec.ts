@@ -96,7 +96,9 @@ test('admin creates a translated product and keeps entered fields on revision co
   ).toBeVisible();
   expect(creates).toBe(1);
   await page
-    .getByRole('button', { name: 'Редактировать', exact: true })
+    .getByRole('button', {
+      name: `Открыть товар ${product.translations.ru.name}`,
+    })
     .click();
   await page
     .getByLabel('Название (ru)', { exact: true })
@@ -130,6 +132,59 @@ test('read-only user sees catalog without mutation controls', async ({
   await expect(page.getByRole('button', { name: 'Новый товар' })).toHaveCount(
     0,
   );
+});
+test('admin list filters by status and shows what is left on each warehouse', async ({
+  page,
+}) => {
+  const asked: URL[] = [];
+  await page.route('**/api/v1/auth/session', (route) =>
+    route.fulfill({
+      json: { email: 'reader@example.test', permissions: ['products.read'] },
+    }),
+  );
+  await page.route('**/api/v1/catalog/metadata*', (route) =>
+    route.fulfill({ json: metadata }),
+  );
+  await page.route('**/api/v1/admin/products*', (route) => {
+    asked.push(new URL(route.request().url()));
+    return route.fulfill({
+      json: {
+        items: [
+          {
+            ...product,
+            stock: {
+              onHand: 3,
+              reserved: 1,
+              warehouses: [
+                {
+                  code: 'chisinau',
+                  name: 'Кишинёв, основной склад',
+                  onHand: 3,
+                  reserved: 1,
+                },
+              ],
+            },
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 8,
+      },
+    });
+  });
+  await page.goto('http://127.0.0.1:4173');
+  const list = page.getByRole('region', { name: 'Список товаров' });
+  // На компьютере товары в таблице; карточки для телефона скрыты.
+  const table = list.getByRole('table');
+  await expect(table.getByText('3 шт')).toBeVisible();
+  await expect(table.getByText('мало')).toBeVisible();
+  await expect(table.getByText('Кишинёв 3')).toBeVisible();
+  // Вкладка статуса уходит в запрос, номера страницы сбрасываются на первую.
+  await list.getByRole('button', { name: 'Черновики' }).click();
+  await expect
+    .poll(() => asked.at(-1)?.searchParams.get('status'))
+    .toBe('draft');
+  expect(asked.at(-1)?.searchParams.get('page')).toBe('1');
 });
 test('catalog filters apply at once and show as removable chips', async ({
   page,
