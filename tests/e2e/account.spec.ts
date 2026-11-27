@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('customer can register, start an HttpOnly session and log out from storefront', async ({
+test('the old account address opens the window, where a customer registers and logs out', async ({
   page,
 }) => {
   const customer = {
@@ -22,6 +22,9 @@ test('customer can register, start an HttpOnly session and log out from storefro
           },
         }),
   );
+  await page.route('**/api/v1/auth/providers', (route) =>
+    route.fulfill({ json: { google: false } }),
+  );
   await page.route('**/api/v1/auth/register', async (route) => {
     expect(route.request().postDataJSON()).toEqual(customer);
     authenticated = true;
@@ -38,13 +41,27 @@ test('customer can register, start an HttpOnly session and log out from storefro
     authenticated = false;
     await route.fulfill({ status: 204 });
   });
+  // Отдельной страницы аккаунта нет: старый адрес открывает окно на главной.
   await page.goto('http://127.0.0.1:4321/ru/account/');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await page.getByLabel('Электронная почта').fill(customer.email);
-  await page.getByLabel('Пароль').fill(customer.password);
-  await page.getByRole('button', { name: 'Зарегистрироваться' }).click();
-  await expect(page.getByText(customer.email)).toBeVisible();
-  await page.getByRole('button', { name: 'Выйти' }).click();
-  // В шапке тоже есть форма (поиск по каталогу), поэтому ищем форму входа в основной части.
-  await expect(page.locator('main form')).toBeVisible();
+  await expect(page).toHaveURL('http://127.0.0.1:4321/ru/');
+  const dialog = page.getByRole('dialog', { name: 'Аккаунт' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Создать аккаунт' }).click();
+  await dialog.getByLabel('Электронная почта').fill(customer.email);
+  await dialog.getByLabel('Пароль', { exact: true }).fill(customer.password);
+  await dialog
+    .getByRole('button', { name: 'Создать аккаунт', exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Вы вошли', level: 2 }),
+  ).toBeVisible();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  // Выход — из того же окна, через значок аккаунта.
+  await page.getByRole('banner').getByRole('link', { name: 'Аккаунт' }).click();
+  await page
+    .getByRole('dialog', { name: 'Вы вошли' })
+    .getByRole('button', { name: 'Выйти' })
+    .click();
+  await expect(dialog.getByLabel('Электронная почта')).toBeVisible();
 });
