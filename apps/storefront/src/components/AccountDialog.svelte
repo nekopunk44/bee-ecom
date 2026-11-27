@@ -128,9 +128,23 @@
     ]);
     if (current === run) dialog.close();
   }
+  /**
+   * Пока окно открыто, страница под ним не прокручивается. Если у страницы была
+   * полоса прокрутки, место под неё остаётся, чтобы страница не дёрнулась вбок.
+   */
+  function lock(on: boolean) {
+    const root = document.documentElement;
+    if (!on) root.removeAttribute('data-scroll-locked');
+    else
+      root.setAttribute(
+        'data-scroll-locked',
+        innerWidth > root.clientWidth ? 'gutter' : '',
+      );
+  }
   /** Окно закрылось (в том числе вторым Escape без анимации): значок ловит соту. */
   function landed() {
     phase = null;
+    lock(false);
     if (!(origin instanceof HTMLElement)) return;
     // Чтение размера между снятием и возвратом класса перезапускает анимацию.
     origin.classList.remove('bump');
@@ -178,7 +192,10 @@
       aim();
       phase = 'opening';
       await tick();
-      if (!dialog.open) dialog.showModal();
+      if (!dialog.open) {
+        lock(true);
+        dialog.showModal();
+      }
       // Пока окно раскрывается, содержимое встаёт по очереди; то, что появится
       // позже (ошибка, меню после входа), показывается сразу, без очереди.
       setTimeout(() => {
@@ -433,6 +450,14 @@
     color: var(--color-ink);
     box-shadow: 0 2rem 5rem rgb(23 21 15 / 30%);
     overflow: auto;
+    /* Прокрутка внутри окна на краю не переходит на страницу. */
+    overscroll-behavior: contain;
+  }
+  :global(html[data-scroll-locked]) {
+    overflow: hidden;
+  }
+  :global(html[data-scroll-locked='gutter']) {
+    scrollbar-gutter: stable;
   }
   /* Затемнение с медовыми сотами: проступает и чуть оседает, пока окно летит. */
   .account-dialog::backdrop {
