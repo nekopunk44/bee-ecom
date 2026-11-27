@@ -6,21 +6,22 @@ import {
   Color,
   CylinderGeometry,
   DoubleSide,
-  EdgesGeometry,
   Group,
   InstancedMesh,
-  LineBasicMaterial,
-  LineSegments,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  PlaneGeometry,
   RepeatWrapping,
+  ShadowMaterial,
   SphereGeometry,
   SRGBColorSpace,
   Vector3,
   type Material,
   type Object3D,
+  type Texture,
 } from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 /* Модели собраны из простых тел прямо в коде: файлов моделей нет, пчеловодные размеры
    настоящие. Единица сцены — 10 см: улей Дадан 50×46, рамка корпуса 435×300,
@@ -56,6 +57,126 @@ function canvasTexture(
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
   return texture;
+}
+
+/** Повторяемый «случай»: доски выглядят одинаково при каждой загрузке. */
+function seeded(seed: number) {
+  let value = seed;
+  return () => {
+    value = (value * 16807) % 2147483647;
+    return (value - 1) / 2147483646;
+  };
+}
+
+/**
+ * Доски улья: волокна идут вдоль доски, между досками тонкий шов. Окрашенное дерево
+ * (painted) показывает волокна едва заметно сквозь краску, сырое — отчётливо, с
+ * парой сучков. Та же картинка служит рельефом, чтобы волокна ловили свет.
+ */
+function boardsTexture(
+  base: string,
+  grain: string,
+  options: { painted: boolean; boards: number; seed: number },
+) {
+  const size = 512;
+  const random = seeded(options.seed);
+  const texture = canvasTexture(size, size, (g) => {
+    g.fillStyle = base;
+    g.fillRect(0, 0, size, size);
+    const board = size / options.boards;
+    for (let b = 0; b < options.boards; b++) {
+      const top = b * board;
+      // Каждая доска чуть светлее или темнее соседней.
+      g.fillStyle = `rgba(${random() > 0.5 ? '255,255,255' : '0,0,0'},${
+        options.painted ? 0.025 + random() * 0.03 : 0.04 + random() * 0.06
+      })`;
+      g.fillRect(0, top, size, board);
+      g.strokeStyle = grain;
+      const lines = options.painted ? 26 : 46;
+      for (let i = 0; i < lines; i++) {
+        const y = top + random() * board;
+        const amplitude = 1 + random() * 4;
+        const wave = 0.004 + random() * 0.012;
+        const phase = random() * 6.28;
+        g.globalAlpha = options.painted
+          ? 0.04 + random() * 0.07
+          : 0.12 + random() * 0.28;
+        g.lineWidth = 0.6 + random() * (options.painted ? 1.2 : 1.8);
+        g.beginPath();
+        for (let x = 0; x <= size; x += 8) {
+          const yy = y + Math.sin(x * wave + phase) * amplitude;
+          if (x === 0) g.moveTo(x, yy);
+          else g.lineTo(x, yy);
+        }
+        g.stroke();
+      }
+      if (!options.painted && random() > 0.45) {
+        // Сучок: тёмное ядро и волокна, огибающие его.
+        const x = 40 + random() * (size - 80);
+        const y = top + board * (0.3 + random() * 0.4);
+        const knot = g.createRadialGradient(x, y, 1, x, y, 14);
+        knot.addColorStop(0, grain);
+        knot.addColorStop(1, 'rgba(0,0,0,0)');
+        g.globalAlpha = 0.55;
+        g.fillStyle = knot;
+        g.beginPath();
+        g.ellipse(x, y, 16, 8, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.globalAlpha = options.painted ? 0.35 : 0.5;
+      g.fillStyle = grain;
+      g.fillRect(0, top, size, options.painted ? 1.5 : 2);
+      g.globalAlpha = 1;
+    }
+  });
+  texture.wrapS = texture.wrapT = RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+/** Оцинкованная жесть крыши: тонкие продольные риски. */
+function tinTexture() {
+  const random = seeded(7);
+  const texture = canvasTexture(256, 256, (g) => {
+    g.fillStyle = '#9a978c';
+    g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 160; i++) {
+      g.globalAlpha = 0.05 + random() * 0.12;
+      g.fillStyle = random() > 0.5 ? '#ffffff' : '#4a4740';
+      g.fillRect(0, random() * 256, 256, 0.6 + random());
+    }
+  });
+  texture.wrapS = texture.wrapT = RepeatWrapping;
+  return texture;
+}
+
+type Surfaces = {
+  painted: Texture;
+  raw: Texture;
+  dark: Texture;
+  tin: Texture;
+};
+let surfaces: Surfaces | undefined;
+function hiveSurfaces(): Surfaces {
+  surfaces ??= {
+    painted: boardsTexture('#eda800', '#8a5a00', {
+      painted: true,
+      boards: 3,
+      seed: 11,
+    }),
+    raw: boardsTexture(palette.wood, '#6b4318', {
+      painted: false,
+      boards: 2,
+      seed: 23,
+    }),
+    dark: boardsTexture(palette.roof, '#0e0c08', {
+      painted: true,
+      boards: 3,
+      seed: 37,
+    }),
+    tin: tinTexture(),
+  };
+  return surfaces;
 }
 
 /** Плитка сот: две колонки и четыре ряда, повторяется без шва. */
@@ -199,22 +320,23 @@ export function makeCrawler(size: number) {
   return { holder, bee };
 }
 
+/**
+ * Деталь улья со скруглёнными рёбрами: на скосе собирается блик, и коробка перестаёт
+ * выглядеть нарисованной. Детали отбрасывают и принимают тени.
+ */
 function box(
   parent: Object3D,
   size: [number, number, number],
   position: [number, number, number],
   material: Material,
-  edges?: LineBasicMaterial,
 ) {
-  const geometry = new BoxGeometry(...size);
+  const radius = Math.min(0.035, Math.min(...size) / 4);
+  const geometry = new RoundedBoxGeometry(...size, 2, radius);
   const mesh = new Mesh(geometry, material);
   mesh.position.set(...position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   parent.add(mesh);
-  if (edges) {
-    const lines = new LineSegments(new EdgesGeometry(geometry), edges);
-    lines.position.copy(mesh.position);
-    parent.add(lines);
-  }
   return mesh;
 }
 
@@ -228,33 +350,31 @@ export type HivePart = {
 /** Улей Дадан: дно, корпус, магазин, потолок и крыша; рамки внутри корпусов. */
 export function buildHive() {
   const { width: W, depth: D, wall: T } = HIVE;
+  const surface = hiveSurfaces();
+  // Краска на досках: волокна просвечивают и чуть ловят свет.
   const honey = new MeshStandardMaterial({
-    color: palette.honey,
-    roughness: 0.62,
+    map: surface.painted,
+    bumpMap: surface.painted,
+    bumpScale: 0.6,
+    roughness: 0.55,
   });
   const dark = new MeshStandardMaterial({
-    color: palette.roof,
-    roughness: 0.7,
-    metalness: 0.15,
+    map: surface.dark,
+    bumpMap: surface.dark,
+    bumpScale: 0.5,
+    roughness: 0.72,
+    metalness: 0.1,
   });
   const wood = new MeshStandardMaterial({
-    color: palette.wood,
-    roughness: 0.75,
+    map: surface.raw,
+    bumpMap: surface.raw,
+    bumpScale: 1.2,
+    roughness: 0.82,
   });
   const tin = new MeshStandardMaterial({
-    color: '#8d8a80',
-    metalness: 0.75,
-    roughness: 0.35,
-  });
-  const inkEdge = new LineBasicMaterial({
-    color: palette.night,
-    transparent: true,
-    opacity: 0.55,
-  });
-  const honeyEdge = new LineBasicMaterial({
-    color: palette.honey,
-    transparent: true,
-    opacity: 0.55,
+    map: surface.tin,
+    metalness: 0.85,
+    roughness: 0.32,
   });
   const broodComb = combTexture(['#7a5410', '#3d2a07'], palette.wax);
   const honeyComb = combTexture(['#f6c64a', '#b97a10'], '#e2b350');
@@ -290,22 +410,10 @@ export function buildHive() {
   }
   function shell(height: number) {
     const group = new Group();
-    box(group, [W, height, T], [0, height / 2, D / 2 - T / 2], honey, inkEdge);
-    box(group, [W, height, T], [0, height / 2, -D / 2 + T / 2], honey, inkEdge);
-    box(
-      group,
-      [T, height, D - 2 * T],
-      [W / 2 - T / 2, height / 2, 0],
-      honey,
-      inkEdge,
-    );
-    box(
-      group,
-      [T, height, D - 2 * T],
-      [-W / 2 + T / 2, height / 2, 0],
-      honey,
-      inkEdge,
-    );
+    box(group, [W, height, T], [0, height / 2, D / 2 - T / 2], honey);
+    box(group, [W, height, T], [0, height / 2, -D / 2 + T / 2], honey);
+    box(group, [T, height, D - 2 * T], [W / 2 - T / 2, height / 2, 0], honey);
+    box(group, [T, height, D - 2 * T], [-W / 2 + T / 2, height / 2, 0], honey);
     for (const side of [1, -1])
       box(
         group,
@@ -342,19 +450,14 @@ export function buildHive() {
   };
 
   const bottom = new Group();
-  box(bottom, [W, 0.18, D + 0.7], [0, 0.09, 0.35], dark, honeyEdge);
-  box(bottom, [W, 0.42, T], [0, 0.39, -D / 2 + T / 2], dark, honeyEdge);
-  box(bottom, [T, 0.42, D - T], [W / 2 - T / 2, 0.39, T / 2], dark, honeyEdge);
-  box(bottom, [T, 0.42, D - T], [-W / 2 + T / 2, 0.39, T / 2], dark, honeyEdge);
-  box(bottom, [1.1, 0.42, T], [-1.7, 0.39, D / 2 - T / 2], dark, honeyEdge);
-  box(bottom, [1.1, 0.42, T], [1.7, 0.39, D / 2 - T / 2], dark, honeyEdge);
-  box(
-    bottom,
-    [W - 0.6, 0.08, 1.1],
-    [0, 0.12, D / 2 + 0.7],
-    wood,
-    inkEdge,
-  ).rotation.x = 0.18;
+  box(bottom, [W, 0.18, D + 0.7], [0, 0.09, 0.35], dark);
+  box(bottom, [W, 0.42, T], [0, 0.39, -D / 2 + T / 2], dark);
+  box(bottom, [T, 0.42, D - T], [W / 2 - T / 2, 0.39, T / 2], dark);
+  box(bottom, [T, 0.42, D - T], [-W / 2 + T / 2, 0.39, T / 2], dark);
+  box(bottom, [1.1, 0.42, T], [-1.7, 0.39, D / 2 - T / 2], dark);
+  box(bottom, [1.1, 0.42, T], [1.7, 0.39, D / 2 - T / 2], dark);
+  box(bottom, [W - 0.6, 0.08, 1.1], [0, 0.12, D / 2 + 0.7], wood).rotation.x =
+    0.18;
   add(bottom, 0, -1.4, 0.6);
 
   const body = new Group();
@@ -370,12 +473,12 @@ export function buildHive() {
   add(honeySuper, 3.8, 5.6, 1.7);
 
   const cover = new Group();
-  box(cover, [W, 0.14, D], [0, 0.07, 0], wood, inkEdge);
+  box(cover, [W, 0.14, D], [0, 0.07, 0], wood);
   add(cover, 5.5, 9.8, 0.14);
 
   const roof = new Group();
-  box(roof, [W + 0.5, 0.75, D + 0.5], [0, 0.4, 0], dark, honeyEdge);
-  box(roof, [W + 0.62, 0.08, D + 0.62], [0, 0.8, 0], tin, honeyEdge);
+  box(roof, [W + 0.5, 0.75, D + 0.5], [0, 0.4, 0], dark);
+  box(roof, [W + 0.62, 0.08, D + 0.62], [0, 0.8, 0], tin);
   add(roof, 5.64, 11.1, 0.84);
 
   const shadow = new Mesh(
@@ -391,6 +494,15 @@ export function buildHive() {
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = -1.45;
   hive.add(shadow);
+  // Невидимый пол, на который ложатся настоящие тени корпусов и рамок.
+  const floor = new Mesh(
+    new PlaneGeometry(30, 30),
+    new ShadowMaterial({ opacity: 0.3, depthWrite: false }),
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -1.44;
+  floor.receiveShadow = true;
+  hive.add(floor);
 
   const loops: [number, number, number][][] = [
     [
@@ -448,9 +560,12 @@ export type Cell = { x: number; y: number; order: number; glow: number };
 export function buildHeroFrame() {
   const { length, height } = BODY_FRAME;
   const group = new Group();
+  const raw = hiveSurfaces().raw;
   const wood = new MeshStandardMaterial({
-    color: palette.wood,
-    roughness: 0.75,
+    map: raw,
+    bumpMap: raw,
+    bumpScale: 1.2,
+    roughness: 0.82,
   });
   const half = height / 2;
   box(group, [length + 0.5, 0.12, 0.22], [0, half - 0.06, 0], wood);
