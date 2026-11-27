@@ -3,6 +3,7 @@
   import { backOut } from 'svelte/easing';
   import { addOne } from '../lib/cart';
   import { flyToCart } from '../lib/motion';
+  import { signIn } from '../lib/sign-in';
   import type { Locale } from '../i18n';
   let { variantId, locale }: { variantId: string; locale: Locale } = $props();
   const copy = {
@@ -10,7 +11,6 @@
       add: 'В корзину',
       added: 'Добавлено',
       cart: 'Корзина',
-      signIn: 'Войдите, чтобы добавить товар',
       failed: 'Не удалось добавить. Попробуйте ещё раз.',
       limit: 'В корзине уже 100 штук этого товара.',
     },
@@ -18,7 +18,6 @@
       add: 'Adaugă în coș',
       added: 'Adăugat',
       cart: 'Coș',
-      signIn: 'Autentifică-te pentru a adăuga produsul',
       failed: 'Adăugarea a eșuat. Încearcă din nou.',
       limit: 'Coșul conține deja 100 de bucăți din acest produs.',
     },
@@ -26,13 +25,11 @@
   let busy = $state(false);
   let done = $state(false);
   let error = $state('');
-  let needsLogin = $state(false);
   let button = $state<HTMLButtonElement>();
 
   async function add() {
     busy = true;
     error = '';
-    needsLogin = false;
     const result = await addOne(variantId, locale);
     busy = false;
     if (result === 'added') {
@@ -40,13 +37,13 @@
       if (button) flyToCart(button);
       return;
     }
-    needsLogin = result === 'login';
-    error =
-      result === 'login'
-        ? copy.signIn
-        : result === 'limit'
-          ? copy.limit
-          : copy.failed;
+    // Гость: поверх страницы открывается вход. Вошёл и закрыл окно — товар
+    // добавляется сам, и пчела летит в корзину уже на глазах.
+    if (result === 'login') {
+      if (await signIn(button)) await add();
+      return;
+    }
+    error = result === 'limit' ? copy.limit : copy.failed;
   }
 </script>
 
@@ -76,8 +73,6 @@
       in:fly={{ x: -12, duration: 360, easing: backOut }}>{copy.cart}</a
     >{/if}
   {#if error}<p role="alert">{error}</p>{/if}
-  {#if needsLogin}<a class="login" href={`/${locale}/account/`}>{copy.signIn}</a
-    >{/if}
 </div>
 
 <style>
@@ -130,8 +125,5 @@
     margin: 0;
     color: var(--color-danger);
     font-weight: 600;
-  }
-  .login {
-    font-weight: 700;
   }
 </style>

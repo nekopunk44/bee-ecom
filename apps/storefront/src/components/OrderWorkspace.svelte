@@ -4,6 +4,7 @@
   import { backOut, cubicOut } from 'svelte/easing';
   import { createApiClient, type components } from '@bee/api-client';
   import type { Locale } from '../i18n';
+  import { onSession, signIn } from '../lib/sign-in';
   import { formatMoney } from '../lib/money';
   import { deliveryLabels, formatDate, statusLabels } from '../lib/orders';
   let {
@@ -17,7 +18,7 @@
     ru: {
       loading: 'Загружаем заказ…',
       signIn: 'Войдите в аккаунт, чтобы увидеть заказ.',
-      account: 'Перейти к аккаунту',
+      account: 'Войти',
       missing: 'Такого заказа нет среди ваших заказов.',
       failed: 'Не удалось загрузить заказ. Попробуйте ещё раз.',
       retry: 'Повторить',
@@ -54,7 +55,7 @@
     ro: {
       loading: 'Se încarcă comanda…',
       signIn: 'Autentifică-te pentru a vedea comanda.',
-      account: 'Deschide contul',
+      account: 'Intră în cont',
       missing: 'Această comandă nu se află printre comenzile tale.',
       failed: 'Comanda nu a putut fi încărcată. Încearcă din nou.',
       retry: 'Reîncearcă',
@@ -147,6 +148,8 @@
 
   onMount(() => {
     void load();
+    // Вошёл или вышел в окне аккаунта — данные перечитываются без перезагрузки.
+    return onSession(() => void load());
   });
 </script>
 
@@ -157,7 +160,12 @@
   {:else if authRequired}
     <div class="state">
       <p>{copy.signIn}</p>
-      <a class="button" href={`/${locale}/account/`}>{copy.account}</a>
+      <button
+        class="button"
+        type="button"
+        onclick={(event) => void signIn(event.currentTarget)}
+        >{copy.account}</button
+      >
     </div>
   {:else if missing}
     <div class="state">
